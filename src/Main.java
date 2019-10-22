@@ -1,3 +1,4 @@
+package src;
 import java.util.Scanner;
 public class Main
 {
@@ -20,8 +21,11 @@ public class Main
             final Client client = new Client(input, 5000);
         }
         else {
-            System.out.println("You are to stupid to type a correct letter, please disconnect your head from your body" +
-                    " and let your body search a new brain");
+            System.out.println("******************************************************");
+            System.out.println("You are to stupid to type a correct letter, please\n" +
+                    "disconnect your head from your body and let your body\n" +
+                    "search a new brain");
+            System.out.println("******************************************************");
         }
     }
 }
