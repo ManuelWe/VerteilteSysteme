@@ -16,7 +16,7 @@ public class Server {
             System.out.println("******************************************************");
             System.out.println("\tWelcome to the server interface");
             System.out.println("******************************************************");
-            System.out.println("Currently there is now functionality except seeing");
+            System.out.println("Currently there is no functionality except seeing");
             System.out.println("incoming connections/disconnections");
             System.out.println("******************************************************");
             System.out.println("Log files: ");
