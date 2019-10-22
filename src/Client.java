@@ -1,4 +1,4 @@
-// A Java program for a Client
+package src;// A Java program for a Client
 
 import java.net.*;
 import java.io.*;
@@ -10,6 +10,7 @@ public class Client {
     private Scanner input;
     private DataInputStream serverResponse = null;
     private DataOutputStream out = null;
+    private String clientID = "";
 
     // constructor to put ip address and port
     public Client(String address, int port) {
@@ -29,7 +30,7 @@ public class Client {
         String line = "";
         try {
             serverResponse = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-            System.out.println("You are currently connected to socket " + serverResponse.readUTF());
+            clientID = serverResponse.readUTF();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -41,8 +42,19 @@ public class Client {
                 line = input.nextLine();
                 out.writeUTF(line);
                 System.out.println(serverResponse.readUTF());
-            } catch (IOException i) {
-                System.out.println(i);
+            } catch (IOException c){
+                try {
+                    socket = new Socket(address, port);
+                    out = new DataOutputStream(socket.getOutputStream());
+                    serverResponse = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                    clientID = serverResponse.readUTF();
+                    out.writeUTF(line);
+                } catch (IOException e) {
+                    System.out.println("******************************************************");
+                    System.out.println("!!!!!! Server shut down, you are now the server !!!!!!");
+                    System.out.println("******************************************************");
+                    Server server = new Server(5000);
+                }
             }
         }
         System.out.println("Closing connection to server");

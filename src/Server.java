@@ -1,3 +1,5 @@
+package src;
+
 import java.net.*;
 import java.io.*;
 
@@ -56,24 +58,24 @@ public class Server {
 
         public void run() {
             currentNumber++;
-            String socketID = Integer.toString(currentNumber);
+            String clientID = Integer.toString(currentNumber);
             try {
-                out.writeUTF(socketID);
+                out.writeUTF(clientID);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("Client connected to socket " + socketID);
+            System.out.println("Client " + clientID + " is now connected to the socket");
             String line = "";
             while (!line.equals("Over")) {
                 try {
                     line = in.readUTF();
-                    System.out.println("Socket " + socketID + ": " + line);
+                    System.out.println("Client " + clientID + ": \"" + line + "\"");
                     out.writeUTF("Message received");
                 } catch (IOException i) {
                     line = "Over";
                 }
             }
-            System.out.println("Closing connection with Socket " + socketID);
+            System.out.println("Closing connection with Client " + clientID);
             closeConnection();
         }
     }
