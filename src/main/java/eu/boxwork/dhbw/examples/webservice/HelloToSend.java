@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 
 
@@ -18,28 +20,28 @@ public class HelloToSend {
 	
 	private String name = null;
 	private String[] listOfStates = {"Baden","Wuerttemberg"};
+	private File file;
 	
 	public HelloToSend() {
 		super();
+		file = new File("OutputFile.txt");
 	}
 	public String getName() {
-		return name;
+		return tail();
 	}
 	public void setName(String name) {
 		this.name = name;
 
-		File file1 = new File("OutputFile.txt");
 		try {
-			file1.createNewFile();
+			file.createNewFile();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		//System.out.println(tail(file1));
 
-		//Calendar cal = Calendar.getInstance();
-		//SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+		Calendar cal = Calendar.getInstance();
+		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
 
-		List<String> lines = Arrays.asList(name);
+		List<String> lines = Arrays.asList(name + " " + sdf.format(cal.getTime()));
 		Path file = Paths.get("OutputFile.txt");
 
 		try {
@@ -61,19 +63,17 @@ public class HelloToSend {
 	
 	public String toString()
 	{
-		return "hello "+name;
+		return "hello "+tail();
 	}
 	
 	public String toHTML() {
-		File file1 = new File("OutputFile.txt");
-
 		String ret = "<HTML><HEADER><TITLE>HTTP REST RESPONSE HELLO WORLD</TITLE></HEADER>";
-			ret = ret + "<BODY><H1>HELLO: "+tail(file1)+"</H1></BODY>";
+			ret = ret + "<BODY><H1>HELLO: "+ tail() +"</H1></BODY>";
 		ret = ret + "</HTML>";
 		return ret;
 	}
 
-	public String tail(File file) {
+	public String tail() {
 		RandomAccessFile fileHandler = null;
 		try {
 			fileHandler = new RandomAccessFile(file, "r");

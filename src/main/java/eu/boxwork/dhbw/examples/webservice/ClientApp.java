@@ -28,13 +28,13 @@ public class ClientApp {
 		service = Client.create().resource(
 				baseURL );
 	}
-	
-	public String getTextResponse()
+
+	public String getLastMessage()
 	{
-		// first we request the text interface
-		Builder b = service.path("hello").accept(MediaType.TEXT_PLAIN);		
-		String  response = b.get(String.class);		
-		return response;		
+		// now we request a json but print it as String
+		Builder b = service.path("hello").accept(MediaType.APPLICATION_JSON);
+		String response = b.get(String.class);
+		return response;
 	}
 	
 	public String getJsonResponseAsText(String name)
@@ -66,15 +66,15 @@ public class ClientApp {
 	public int getErrorCodeWrongDataType()
 	{
 		ClientResponse responseError = service.path("hello").
-				accept(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+				accept(MediaType.TEXT_PLAIN).get(ClientResponse.class);
 		// the request is not supported due to invalid content type in header, error should be 406
 		return responseError.getStatus();
 	}
 	
 	public void fireRequests()
 	{
-		System.out.println("Text RESPONSE: "+getTextResponse());
-	
+		System.out.println("Last Message: "+getLastMessage());
+
 		System.out.println("JSON RESPONSE as Text: "+getJsonResponseAsText("A-NAME"));
 		
 		// now we request a json and parse it implicitely as an object
@@ -91,7 +91,7 @@ public class ClientApp {
 			if (getErrorCodeWrongDataType() != 200)
 					System.out.println("ERROR code is: "+responseError);
 			else
-				System.err.println("no ERROR as exspected.");
+				System.err.println("no ERROR as expected.");
 		} catch (Exception e) {
 			System.err.println(e.getLocalizedMessage());
 		}

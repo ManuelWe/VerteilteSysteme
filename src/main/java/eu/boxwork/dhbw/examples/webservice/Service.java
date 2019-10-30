@@ -45,15 +45,8 @@ public class Service {
 	{
 		return getUsage(true);
 	}
-	
-/*	@GET // Method type used by the client
-	@Path( "hello" ) // sub path hello => http://<serverip>/rest/hello
-	@Produces(MediaType.TEXT_PLAIN) // we return a text type
-	public String hello()
-	{
-		return "hello!!!";
-	}*/
-	  
+
+	//writes to end of file
 	@GET // Method type used by the client
 	@Path( "hello/{name}" ) // sub path hello => http://<serverip>/rest/hello/name of user
 	@Consumes(MediaType.TEXT_PLAIN) // parameter request type
@@ -64,18 +57,8 @@ public class Service {
 		hello.setName(name);
 		return hello;
 	}
-	
-	@GET // Method type used by the client
-	@Path( "hello/{name}" ) // sub path hello => http://<serverip>/rest/hello/name of user
-	@Consumes(MediaType.TEXT_PLAIN) // parameter request type
-	@Produces(MediaType.TEXT_PLAIN) // we return a text string
-	public HelloToSend helloWorldText(@PathParam("name") String name)
-	{
-		HelloToSend hello = new HelloToSend();
-		hello.setName(name);
-		return hello;
-	}
-	
+
+	//writes to end of file
 	@GET // Method type used by the client
 	@Path( "hello/{name}" ) // sub path hello => http://<serverip>/rest/hello/name of user
 	@Consumes(MediaType.TEXT_PLAIN) // parameter request type
@@ -88,10 +71,20 @@ public class Service {
 	}
 
 	@GET // Method type used by the client
+	@Path( "hello" ) // sub path hello => http://<serverip>/rest/hello
+	@Produces(MediaType.APPLICATION_JSON) // we return a text type
+	public String helloJSON()
+	{
+		HelloToSend hello = new HelloToSend();
+		return hello.getName();
+	}
+
+	//returns last message from file
+	@GET // Method type used by the client
 	@Path( "hello" ) // sub path hello => http://<serverip>/rest/hello/name of user
 	@Consumes(MediaType.TEXT_PLAIN) // parameter request type
 	@Produces(MediaType.TEXT_HTML) // we return a html page since a browser calls this IF automatically
-	public String hello()
+	public String helloHTML()
 	{
 		HelloToSend hello = new HelloToSend();
 		return hello.toHTML();
