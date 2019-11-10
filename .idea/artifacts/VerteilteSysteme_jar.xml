@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="VerteilteSysteme.jar">
-    <output-path>$PROJECT_DIR$/out/ExportJar</output-path>
-    <root id="archive" name="VerteilteSystemeAufgabe1.jar">
-      <element id="module-output" name="VerteilteSysteme" />
-    </root>
-  </artifact>
-</component>

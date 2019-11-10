@@ -1,4 +1,4 @@
-package eu.boxwork.dhbw.examples.webservice;
+package dhcp;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,7 +7,7 @@ import java.io.InputStreamReader;
 import com.sun.jersey.api.container.httpserver.HttpServerFactory;
 import com.sun.net.httpserver.HttpServer;
 
-public class Webserver {
+public class DhcpServer {
 
 	public HttpServer server = null;
 
@@ -18,10 +18,10 @@ public class Webserver {
 	 * @param args: 0 = IP, 1 = port
 	 */
 	public static void main(String[] args) throws IOException, InterruptedException {
-		String ip = "127.0.0.2";
-		String port = "8080";
+		String ip = "127.0.0.1";
+		String port = "8081";
 
-		Webserver server = new Webserver();
+		DhcpServer server = new DhcpServer();
 		server.startServer(ip, port);
 		System.out.print("Enter key to close server...");
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -36,6 +36,7 @@ public class Webserver {
 
 	public void startServer(String ip, String port) {
 		String serverString = "http://" + ip + ":" + port + "/";
+
 		try {
 			server = HttpServerFactory.create(serverString);
 		} catch (Exception e) {
