@@ -15,7 +15,7 @@ public class ClientApp {
 	}
 
 	public String getServerIp() {
-		Builder b = service.path("server").accept(MediaType.TEXT_PLAIN);
+		Builder b = service.path("dhcp/server").accept(MediaType.TEXT_PLAIN);
 		return b.get(String.class);
 	}
 
@@ -44,5 +44,8 @@ public class ClientApp {
 		String serverString = "http://" + serverIp + ":" + 8080 + "/test";
 		app.initialise(serverString);
 		System.out.println(app.getLastMessage());
+
+		while (true)
+			;
 	}
 }

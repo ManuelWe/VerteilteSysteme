@@ -1,6 +1,5 @@
 package eu.boxwork.dhbw.examples.webservice;
 
-import javax.xml.bind.annotation.XmlRootElement;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -14,21 +13,21 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
-
-@XmlRootElement
 public class HelloToSend {
-	
+
 	private String name = null;
-	private String[] listOfStates = {"Baden","Wuerttemberg"};
+	private String[] listOfStates = { "Baden", "Wuerttemberg" };
 	private File file;
-	
+
 	public HelloToSend() {
 		super();
 		file = new File("OutputFile.txt");
 	}
+
 	public String getName() {
 		return tail();
 	}
+
 	public void setName(String name) {
 		this.name = name;
 
@@ -54,21 +53,22 @@ public class HelloToSend {
 			}
 		}
 	}
+
 	public String[] getListOfStates() {
 		return listOfStates;
 	}
+
 	public void setListOfStates(String[] listOfStates) {
 		this.listOfStates = listOfStates;
 	}
-	
-	public String toString()
-	{
-		return "hello "+tail();
+
+	public String toString() {
+		return "hello " + tail();
 	}
-	
+
 	public String toHTML() {
 		String ret = "<HTML><HEADER><TITLE>HTTP REST RESPONSE HELLO WORLD</TITLE></HEADER>";
-			ret = ret + "<BODY><H1>HELLO: "+ tail() +"</H1></BODY>";
+		ret = ret + "<BODY><H1>HELLO: " + tail() + "</H1></BODY>";
 		ret = ret + "</HTML>";
 		return ret;
 	}
