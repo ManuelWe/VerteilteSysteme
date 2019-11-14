@@ -9,7 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import eu.boxwork.dhbw.examples.webservice.ClientApp;
+import client.WebClient;
 import eu.boxwork.dhbw.examples.webservice.Webserver;
 
 /**
@@ -21,7 +21,7 @@ public class ClientAppTest {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 	
-	ClientApp app = new ClientApp();
+	WebClient app = new WebClient();
 	Webserver server = new Webserver();
 	
 	/**
@@ -32,7 +32,7 @@ public class ClientAppTest {
 		server.startServer(ip, port);
 		
 		String serverString = "http://"+ip+":"+port+"/";
-		String baseURLRoot = serverString+ClientApp.BASE;
+		String baseURLRoot = serverString+WebClient.BASE;
 				
 		app.initialise(baseURLRoot);
 		
@@ -47,7 +47,7 @@ public class ClientAppTest {
 	}
 
 	/**
-	 * Test method for {@link eu.boxwork.dhbw.examples.webservice.ClientApp#getTextResponse()}.
+	 * Test method for {@link client.WebClient#getTextResponse()}.
 	 */
 	@Test
 	public void testGetTextResponse() {
@@ -55,7 +55,7 @@ public class ClientAppTest {
 	}
 
 	/**
-	 * Test method for {@link eu.boxwork.dhbw.examples.webservice.ClientApp#getJsonResponseAsText(java.lang.String)}.
+	 * Test method for {@link client.WebClient#getJsonResponseAsText(java.lang.String)}.
 	 */
 	@Test
 	public void testGetJsonResponseAsText() {
@@ -63,7 +63,7 @@ public class ClientAppTest {
 	}
 
 	/**
-	 * Test method for {@link eu.boxwork.dhbw.examples.webservice.ClientApp#getJsonResponseAsJsonObject(java.lang.String)}.
+	 * Test method for {@link client.WebClient#getJsonResponseAsJsonObject(java.lang.String)}.
 	 */
 	@Test
 	public void testGetJsonResponseAsJsonObject() {
@@ -71,7 +71,7 @@ public class ClientAppTest {
 	}
 
 	/**
-	 * Test method for {@link eu.boxwork.dhbw.examples.webservice.ClientApp#getJsonResponseAsJsonObjectManuallyParsed(java.lang.String)}.
+	 * Test method for {@link client.WebClient#getJsonResponseAsJsonObjectManuallyParsed(java.lang.String)}.
 	 */
 	@Test
 	public void testGetJsonResponseAsJsonObjectManuallyParsed() {
@@ -79,7 +79,7 @@ public class ClientAppTest {
 	}
 
 	/**
-	 * Test method for {@link eu.boxwork.dhbw.examples.webservice.ClientApp#getErrorCodeWrongDataType()}.
+	 * Test method for {@link client.WebClient#getErrorCodeWrongDataType()}.
 	 */
 	@Test
 	public void testGetErrorCodeWrongDataType() {

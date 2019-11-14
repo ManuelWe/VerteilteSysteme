@@ -7,49 +7,36 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.List;
 
-public class HelloToSend {
-
-	private String name = null;
+public class FileHandler {
 	private File file;
 
-	public HelloToSend() {
+	public FileHandler() {
 		super();
 		file = new File("server.txt");
 	}
 
-	public void setName(String name) {
-		this.name = name;
-
+	public void setServerAddress(String address) {
 		try {
 			file.createNewFile();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		Calendar cal = Calendar.getInstance();
-		SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-
-		List<String> lines = Arrays.asList(name + " " + sdf.format(cal.getTime()));
-		Path file = Paths.get("OutputFile.txt");
+		Path file = Paths.get("server.txt");
+		List<String> lines = Arrays.asList(address);
 
 		try {
-			Files.write(file, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+			Files.write(file, lines, StandardCharsets.UTF_8);
 		} catch (IOException e) {
-			try {
-				Files.write(file, lines, StandardCharsets.UTF_8);
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
+			e.printStackTrace();
 		}
 	}
 
-	public String tail() {
+	// TODO only first entry enough?
+	public String getLastFileEntry() {
 		RandomAccessFile fileHandler = null;
 		try {
 			fileHandler = new RandomAccessFile(file, "r");

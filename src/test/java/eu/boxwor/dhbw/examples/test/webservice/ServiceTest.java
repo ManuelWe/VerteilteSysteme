@@ -18,14 +18,14 @@ public class ServiceTest {
     @Test public void helloWorldJSON() {
     	Service service = new Service();
     	String myName = "testname";
-    	HelloToSend resp = service.helloWorldJSON(myName);
+    	FileHandler resp = service.helloWorldJSON(myName);
         assertEquals(resp.getName(), myName);
     }
     
     @Test public void helloWorldText() {
     	Service service = new Service();
     	String myName = "testname";
-    	HelloToSend resp = service.helloWorldText(myName);
+    	FileHandler resp = service.helloWorldText(myName);
         assertEquals(resp.getName(), myName);
     }
 }

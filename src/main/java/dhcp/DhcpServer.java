@@ -11,16 +11,9 @@ public class DhcpServer {
 
 	public HttpServer server = null;
 
-	/**
-	 * starts the webserver, IP and port has to be set as parameter like java -jar
-	 * webserverexample.jar localhost 8080
-	 * 
-	 * @param args: 0 = IP, 1 = port
-	 */
-
 	public static void main(String[] args) throws IOException, InterruptedException {
 		String ip = "127.0.0.1";
-		String port = "8081";
+		String port = "8080";
 
 		DhcpServer server = new DhcpServer();
 		server.startServer(ip, port);
