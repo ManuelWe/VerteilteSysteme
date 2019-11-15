@@ -20,7 +20,6 @@ public class Server {
 	// constructor with port
 	public Server() {
 		Socket clientSocket = null;
-		boolean dhcp = false;
 
 		// starts server and waits for a connection
 		try {
@@ -54,7 +53,7 @@ public class Server {
 //			System.out.println(server.getLocalPort());
 //			System.out.println(server.getInetAddress());
 //			System.out.println(server.getPort());
-			if (connections == 0) { // workaround to detect dhcp; if client is dhcp, pass attribute to thread
+			if (connections == 0) { // workaround to detect dhcp; if client is dhcp, start special thread
 				try {
 					new Thread(new dhcpSocketThread(clientSocket)).start();
 				} catch (IOException e) {
