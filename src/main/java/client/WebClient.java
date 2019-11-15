@@ -27,4 +27,14 @@ public class WebClient {
 		return b.get(String.class);
 	}
 
+	public void addClientAddress(String clientAddress) {
+		WebResource b = service.path("dhcp/clients");
+		b.post(String.class, clientAddress);
+	}
+
+	public void removeClientAddress(String clientAddress) {
+		WebResource b = service.path("dhcp/clients");
+		b.delete(String.class, clientAddress);
+	}
+
 }

@@ -17,7 +17,7 @@ public class DhcpServer {
 
 		DhcpServer server = new DhcpServer();
 		server.startServer(ip, port);
-		System.out.print("Enter key to close server...");
+		System.out.println("Enter key to close server...");
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
 		try {

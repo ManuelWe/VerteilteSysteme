@@ -14,9 +14,13 @@ public class Client {
 	private DataInputStream in = null;
 	private DataOutputStream out = null;
 	private String clientID = "";
+	private WebClient webClient = null;
+	private String clientAddress = null;
 
 	// constructor to put ip address and port
-	public Client(String address, int port) {
+	public Client(String address, int port, WebClient webClient) {
+		this.webClient = webClient;
+
 		System.out.println("******************************************************");
 		System.out.println("\tWelcome to the client interface");
 		System.out.println("******************************************************");
@@ -30,6 +34,11 @@ public class Client {
 			System.out.println("!!!!!! No server available, you are the server !!!!!!");
 			new Server();
 		}
+
+		String ip = socket.getLocalAddress().getHostAddress();
+		int clientPort = socket.getLocalPort();
+		clientAddress = ip + ":" + clientPort;
+		webClient.addClientAddress(clientAddress);
 
 		try {
 			scanner = new Scanner(System.in);
@@ -48,6 +57,8 @@ public class Client {
 				out.writeUTF(line);
 				System.out.println(in.readUTF());
 			} catch (IOException c) {
+				webClient.removeClientAddress(clientAddress);
+
 				System.out.println("******************************************************");
 				System.out.println("!!!!!! Server shut down, you are now the server !!!!!!");
 				System.out.println("******************************************************");

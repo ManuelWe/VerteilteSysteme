@@ -1,21 +1,46 @@
 package dhcp;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class FileHandler {
 	private File file;
+	private List<String> clientAddresses = new ArrayList<String>();
+	private Socket socket = null;
+	private DataInputStream in;
+	private DataOutputStream out;
 
 	public FileHandler() {
 		super();
 		file = new File("server.txt");
+	}
+
+	public void addClientAddress(String address) {
+		if (!clientAddresses.contains(address)) {
+			clientAddresses.add(address);
+			try {
+				out.writeUTF(address);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		System.out.println("Connected Clients:" + Arrays.toString(clientAddresses.toArray()));
+	}
+
+	public void removeClientAddress(String address) {
+		clientAddresses.remove(address);
+		System.out.println("Connected Clients:" + Arrays.toString(clientAddresses.toArray()));
 	}
 
 	public void setServerAddress(String address) {
@@ -30,6 +55,19 @@ public class FileHandler {
 
 		try {
 			Files.write(file, lines, StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		String ip = address.split(":")[0];
+		int port = Integer.parseInt(address.split(":")[1]);
+		try {
+			socket = new Socket(ip, port);
+		} catch (IOException u) {
+			u.printStackTrace();
+		}
+		try {
+			out = new DataOutputStream(socket.getOutputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
