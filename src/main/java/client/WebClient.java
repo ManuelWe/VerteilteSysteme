@@ -36,10 +36,10 @@ public class WebClient {
 		WebResource b = service.path("dhcp/clients");
 		b.delete(String.class, clientAddress);
 	}
-	
-	public void noServerAvailable() {
-		WebResource b = service.path("dhcp/serverDown");
-		b.post(String.class);
+
+	public String noServerAvailable(String clientAddress, String serverAddress) {
+		WebResource b = service.path("dhcp/serverDown/" + serverAddress);
+		return b.post(String.class, clientAddress);
 	}
 
 }

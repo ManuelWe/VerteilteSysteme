@@ -1,6 +1,5 @@
 package dhcp;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -18,8 +17,8 @@ public class FileHandler {
 	private File file;
 	private List<String> clientAddresses = new ArrayList<String>();
 	private Socket socket = null;
-	private DataInputStream in;
 	private DataOutputStream out;
+	private String lastServerDown;
 
 	public FileHandler() {
 		super();
@@ -64,7 +63,7 @@ public class FileHandler {
 		try {
 			socket = new Socket(ip, port);
 		} catch (IOException u) {
-			u.printStackTrace();
+			System.out.println(u);
 		}
 		try {
 			out = new DataOutputStream(socket.getOutputStream());
@@ -76,18 +75,28 @@ public class FileHandler {
 	public void getHighestClientAddress() {
 		String highestAddressString = "";
 		int highestAddressInt = 0;
-		 for (String num : clientAddresses) { 
-			 String cleanedAddress = num.replaceAll("[^0-9]", "");
-			 int i = Integer.parseInt(cleanedAddress);
-			 if (i > highestAddressInt) {
-				 highestAddressInt = i;
-				 highestAddressString = num;
-			 }
-	      }
+		for (String num : clientAddresses) {
+			String cleanedAddress = num.replaceAll("[^0-9]", "");
+			int i = Integer.parseInt(cleanedAddress);
+			if (i > highestAddressInt) {
+				highestAddressInt = i;
+				highestAddressString = num;
+			}
+		}
 		System.out.println("New Server should be " + highestAddressString);
 	}
-	
-	
+
+	public String electNewServer(String clientAddress, String serverAddress) {
+		if (serverAddress.equals(lastServerDown)) {
+			return getLastFileEntry();
+		} else {
+			lastServerDown = serverAddress;
+			setServerAddress(clientAddress);
+			removeClientAddress(clientAddress);
+			return clientAddress;
+		}
+	}
+
 	// TODO only first entry enough?
 	public String getLastFileEntry() {
 		RandomAccessFile fileHandler = null;
