@@ -73,6 +73,21 @@ public class FileHandler {
 		}
 	}
 
+	public void getHighestClientAddress() {
+		String highestAddressString = "";
+		int highestAddressInt = 0;
+		 for (String num : clientAddresses) { 
+			 String cleanedAddress = num.replaceAll("[^0-9]", "");
+			 int i = Integer.parseInt(cleanedAddress);
+			 if (i > highestAddressInt) {
+				 highestAddressInt = i;
+				 highestAddressString = num;
+			 }
+	      }
+		System.out.println("New Server should be " + highestAddressString);
+	}
+	
+	
 	// TODO only first entry enough?
 	public String getLastFileEntry() {
 		RandomAccessFile fileHandler = null;

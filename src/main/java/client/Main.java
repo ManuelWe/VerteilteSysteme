@@ -6,7 +6,7 @@ public class Main {
 	public static void main(final String[] args) {
 		final Scanner scanner = new Scanner(System.in);
 		System.out.println("******************************************************");
-		System.out.println("\tWelcome to the new Server / Client chooser");
+		System.out.println("\tWelcome to the new Client / Bot Client chooser");
 		System.out.println("******************************************************");
 		System.out.println("Would you like to open a client press c or type client");
 		System.out.println("For demo clients press ü");

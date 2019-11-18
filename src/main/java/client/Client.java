@@ -32,7 +32,7 @@ public class Client {
 			socket = new Socket(address, port);
 		} catch (IOException u) {
 			System.out.println("!!!!!! No server available, you are the server !!!!!!");
-			new Server();
+			beNewServer();
 		}
 
 		String ip = socket.getLocalAddress().getHostAddress();
@@ -57,12 +57,21 @@ public class Client {
 				out.writeUTF(line);
 				System.out.println(in.readUTF());
 			} catch (IOException c) {
-				webClient.removeClientAddress(clientAddress);
-
-				System.out.println("******************************************************");
-				System.out.println("!!!!!! Server shut down, you are now the server !!!!!!");
-				System.out.println("******************************************************");
-				new Server();
+				this.webClient = new WebClient();
+				String serverAddress = null;
+				try {
+					serverAddress = this.webClient.getServerAddress();
+				} catch (Exception d) {
+					System.out.println("DHCP nicht erreichbar!");
+					System.exit(0);
+				}
+				address = serverAddress.split(":")[0];
+				port = Integer.parseInt(serverAddress.split(":")[1]);
+				try {
+					socket = new Socket(address, port);
+				} catch (IOException e) {
+					serverNotAvailable();
+				}
 			}
 		}
 		System.out.println("Closing connection to server");
@@ -86,5 +95,12 @@ public class Client {
 		} catch (IOException i) {
 			i.printStackTrace();
 		}
+	}
+	private void serverNotAvailable() {
+		webClient.noServerAvailable();
+	}
+	
+	private void beNewServer() {
+		new Server();
 	}
 }
