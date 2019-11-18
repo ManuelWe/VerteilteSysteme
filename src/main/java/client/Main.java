@@ -23,17 +23,15 @@ public class Main {
 				System.out.println("DHCP nicht erreichbar!");
 				System.exit(0);
 			}
-			String ip = serverAddress.split(":")[0];
-			int port = Integer.parseInt(serverAddress.split(":")[1]);
 
 			if (input.equals("ü")) {
 				System.out.printf("How many?: ");
 				int anzahl = Integer.parseInt(scanner.nextLine());
 				for (int i = 0; i < anzahl; i++) {
-					new Thread(new botClient(ip, port, webClient)).start();
+					new Thread(new botClient(serverAddress, webClient)).start();
 				}
 			} else {
-				new Client(ip, port, webClient);
+				new Client(serverAddress, webClient);
 			}
 		} else {
 			System.out.println("******************************************************");

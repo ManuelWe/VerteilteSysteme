@@ -20,8 +20,11 @@ public class botClient implements Runnable {
 	private WebClient webClient = null;
 	private String clientAddress = null;
 
-	public botClient(String address, int port, WebClient webClient) {
+	public botClient(String serverAddress, WebClient webClient) {
 		this.webClient = webClient;
+		String address = serverAddress.split(":")[0];
+		int port = Integer.parseInt(serverAddress.split(":")[1]);
+
 		try {
 			socket = new Socket(address, port);
 		} catch (IOException u) {

@@ -5,6 +5,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
@@ -58,14 +59,15 @@ public class Service {
 		fileHandler.removeClientAddress(clientAddress);
 		return ("OK");
 	}
-	
+
 	@POST
-	@Path("serverDown")
+	@Path("serverDown/{serverAddress}")
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.TEXT_PLAIN)
-	public String serverDown(String serverAddress) {
+	public String serverDown(String clientAddress, @PathParam("serverAddress") String serverAddress) {
 		setup();
-		fileHandler.getHighestClientAddress();
-		return ("OK");
+		String newServerAddress = fileHandler.electNewServer(clientAddress, serverAddress);
+		// fileHandler.getHighestClientAddress();
+		return newServerAddress;
 	}
 }
