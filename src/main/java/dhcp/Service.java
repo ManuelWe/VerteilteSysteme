@@ -58,4 +58,14 @@ public class Service {
 		fileHandler.removeClientAddress(clientAddress);
 		return ("OK");
 	}
+	
+	@POST
+	@Path("serverDown")
+	@Consumes(MediaType.TEXT_PLAIN)
+	@Produces(MediaType.TEXT_PLAIN)
+	public String serverDown(String serverAddress) {
+		setup();
+		fileHandler.getHighestClientAddress();
+		return ("OK");
+	}
 }
