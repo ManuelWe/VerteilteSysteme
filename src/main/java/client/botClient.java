@@ -8,25 +8,35 @@ import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Random;
-import java.util.Scanner;
 
 //sends random text to server in random intervals; closed when server down
 public class botClient implements Runnable {
 	// initialize socket and input output streams
 	private Socket socket = null;
-	private Scanner scanner;
 	private DataInputStream in = null;
 	private DataOutputStream out = null;
 	private String clientID = "";
 	private boolean threadRunning = true;
+	private WebClient webClient = null;
+	private String clientAddress = null;
 
-	public botClient(String address, int port) {
+	public botClient(String address, int port, WebClient webClient) {
+		this.webClient = webClient;
 		try {
 			socket = new Socket(address, port);
-			scanner = new Scanner(System.in);
-			out = new DataOutputStream(socket.getOutputStream());
 		} catch (IOException u) {
 			u.printStackTrace();
+		}
+
+		String ip = socket.getLocalAddress().getHostAddress();
+		int clientPort = socket.getLocalPort();
+		clientAddress = ip + ":" + clientPort;
+		webClient.addClientAddress(clientAddress);
+
+		try {
+			out = new DataOutputStream(socket.getOutputStream());
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -61,7 +71,8 @@ public class botClient implements Runnable {
 	}
 
 	private void closeConnection() {
-		scanner.close();
+		webClient.removeClientAddress(clientAddress);
+
 		try {
 			in.close();
 		} catch (IOException i) {
