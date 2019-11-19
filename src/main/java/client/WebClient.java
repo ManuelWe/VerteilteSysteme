@@ -10,8 +10,7 @@ public class WebClient {
 
 	private WebResource service = null;
 
-	public WebClient() {
-		String dhcpIp = "127.0.0.1";
+	public WebClient(String dhcpIp) {
 		String dhcpString = "http://" + dhcpIp + ":" + 8080 + "/";
 
 		service = Client.create().resource(dhcpString);

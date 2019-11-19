@@ -1,3 +1,4 @@
 eingabe validierung im menü
 close dhcp socket
 immer antwort geben lassen
+bei dhcp neustart clientliste anfordern

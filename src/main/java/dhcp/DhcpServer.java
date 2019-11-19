@@ -3,6 +3,8 @@ package dhcp;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 import com.sun.jersey.api.container.httpserver.HttpServerFactory;
 import com.sun.net.httpserver.HttpServer;
@@ -12,7 +14,12 @@ public class DhcpServer {
 	public HttpServer server = null;
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-		String ip = "127.0.0.1";
+		String ip;
+		// get ip address of localhost
+		try (final DatagramSocket socket = new DatagramSocket()) {
+			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+			ip = socket.getLocalAddress().getHostAddress();
+		}
 		String port = "8080";
 
 		DhcpServer server = new DhcpServer();
