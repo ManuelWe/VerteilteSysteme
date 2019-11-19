@@ -4,7 +4,15 @@ import java.util.Scanner;
 
 public class Main {
 	public static void main(final String[] args) {
+		String dhcpIp = null;
 		final Scanner scanner = new Scanner(System.in);
+		if (args.length == 0) {
+			System.out.println("Please specify dhcp server ip as argument!");
+			System.exit(0);
+		} else {
+			dhcpIp = args[0];
+		}
+
 		System.out.println("******************************************************");
 		System.out.println("\tWelcome to the new Client / Bot Client chooser");
 		System.out.println("******************************************************");
@@ -15,7 +23,7 @@ public class Main {
 		String input = scanner.nextLine();
 
 		if (input.equals("c") || input.equals("client") || input.equals("ü")) {
-			WebClient webClient = new WebClient();
+			WebClient webClient = new WebClient(dhcpIp);
 			String serverAddress = null;
 			try {
 				serverAddress = webClient.getServerAddress();
@@ -39,5 +47,6 @@ public class Main {
 					+ "disconnect your head from your body and let your body\n" + "search a new brain");
 			System.out.println("******************************************************");
 		}
+		scanner.close();
 	}
 }

@@ -32,11 +32,17 @@ public class Client {
 
 		String address = serverAddress.split(":")[0];
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
+		System.out.println(serverAddress);
 		try {
 			socket = new Socket(address, port);
 		} catch (IOException u) {
-			System.out.println("!!!!!! No server available, you are the server !!!!!!");
-			startNewServer();
+			System.out.println("Using local address!");
+			try {
+				socket = new Socket("127.0.0.1", port);
+			} catch (IOException e) {
+				System.out.println("!!!!!! No server available, you are the server !!!!!!");
+				startNewServer();
+			}
 		}
 
 		String ip = socket.getLocalAddress().getHostAddress();
@@ -77,6 +83,7 @@ public class Client {
 						try {
 							scanner = new Scanner(System.in);
 							out = new DataOutputStream(socket.getOutputStream());
+							out.writeUTF(line); // send lost message to new server
 							in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 							clientID = in.readUTF();
 						} catch (IOException e) {
@@ -113,6 +120,6 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		new Server();
+		new Server(webClient);
 	}
 }

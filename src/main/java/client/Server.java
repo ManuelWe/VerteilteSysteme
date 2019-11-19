@@ -4,8 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +20,7 @@ public class Server {
 	private List<String> clientAddresses = new ArrayList<String>();
 
 	// constructor with port
-	public Server() {
+	public Server(WebClient webClient) {
 		Socket clientSocket = null;
 
 		// starts server and waits for a connection
@@ -28,8 +30,13 @@ public class Server {
 			i.printStackTrace();
 		}
 
-		String serverAddress = "127.0.0.1:" + server.getLocalPort();
-		webClient = new WebClient();
+		String localAddress = "";
+		try {
+			localAddress = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e1) {
+			e1.printStackTrace();
+		}
+		String serverAddress = localAddress + ":" + server.getLocalPort();
 		webClient.setServerAddress(serverAddress);
 
 		System.out.println("******************************************************");

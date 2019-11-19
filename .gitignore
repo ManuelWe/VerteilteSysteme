@@ -1,8 +1,6 @@
 /.gradle/
 /bin/
-bin
 /build/
-/
 out
 OutputFile.txt
 .idea
