@@ -63,8 +63,9 @@ public class FileHandler {
 		try {
 			socket = new Socket(ip, port);
 		} catch (IOException u) {
-			System.out.println("Using local address!");
+			System.out.println("Trying local address!");
 			try {
+				// workaround to still be able to launch on laptop; not needed on raspberry
 				socket = new Socket("127.0.0.1", port);
 			} catch (IOException e) {
 				System.out.println(e);

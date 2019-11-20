@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class Server {
@@ -18,6 +19,8 @@ public class Server {
 	private int connections = 0;
 	WebClient webClient;
 	private List<String> clientAddresses = new ArrayList<String>();
+	private List<DataOutputStream> outputStreams = new ArrayList<DataOutputStream>();
+	private List<String> messageList = Collections.synchronizedList(new ArrayList<String>());
 
 	// constructor with port
 	public Server(WebClient webClient) {
@@ -38,6 +41,8 @@ public class Server {
 		}
 		String serverAddress = localAddress + ":" + server.getLocalPort();
 		webClient.setServerAddress(serverAddress);
+
+		new Thread(new messageSenderThread()).start();
 
 		System.out.println("******************************************************");
 		System.out.println("\tWelcome to the server interface");
@@ -85,6 +90,7 @@ public class Server {
 			this.clientSocket = clientSocket;
 			try {
 				out = new DataOutputStream(clientSocket.getOutputStream());
+				outputStreams.add(out);
 				in = new DataInputStream(new BufferedInputStream(clientSocket.getInputStream()));
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -130,7 +136,8 @@ public class Server {
 				try {
 					line = in.readUTF();
 					System.out.println("Client " + clientID + ": \"" + line + "\"");
-					out.writeUTF("Message received");
+					// out.writeUTF("Message received");
+					messageList.add(line);
 				} catch (IOException i) {
 					line = "Over";
 				}
@@ -164,6 +171,27 @@ public class Server {
 			}
 			System.out.println("Closing connection with dhcp");
 			closeConnection();
+		}
+	}
+
+	// sends incoming messages to all clients
+	public class messageSenderThread implements Runnable {
+		int counter = 0;
+
+		public void run() {
+			while (true) {
+				if (counter != messageList.size()) {
+					System.out.println(messageList.get(counter));
+					for (int i = 0; i < outputStreams.size(); i++) {
+						try {
+							outputStreams.get(i).writeUTF(messageList.get(counter));
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+					counter++;
+				}
+			}
 		}
 	}
 }

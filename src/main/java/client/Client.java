@@ -5,6 +5,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 public class Client {
@@ -17,6 +20,7 @@ public class Client {
 	private WebClient webClient = null;
 	private String clientAddress = null;
 	private String serverAddress = null;
+	private List<String> messageList = Collections.synchronizedList(new ArrayList<String>());
 
 	// constructor to put ip address and port
 	public Client(String serverAddress, WebClient webClient) {
@@ -32,12 +36,13 @@ public class Client {
 
 		String address = serverAddress.split(":")[0];
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
-		System.out.println(serverAddress);
+
 		try {
 			socket = new Socket(address, port);
 		} catch (IOException u) {
-			System.out.println("Using local address!");
+			System.out.println("Trying local address!");
 			try {
+				// workaround to still be able to launch on laptop; not needed on raspberry
 				socket = new Socket("127.0.0.1", port);
 			} catch (IOException e) {
 				System.out.println("!!!!!! No server available, you are the server !!!!!!");
@@ -59,6 +64,8 @@ public class Client {
 			e.printStackTrace();
 		}
 
+		new Thread(new messageReceiverThread()).start();
+
 		String line = "";
 		String newServerAddress;
 		while (!line.equals("Over")) {
@@ -66,7 +73,7 @@ public class Client {
 			try {
 				line = scanner.nextLine();
 				out.writeUTF(line);
-				System.out.println(in.readUTF());
+				// System.out.println(in.readUTF());
 			} catch (IOException c) {
 				newServerAddress = webClient.noServerAvailable(clientAddress, serverAddress);
 				if (newServerAddress.equals(clientAddress)) {
@@ -121,5 +128,21 @@ public class Client {
 
 	private void startNewServer() {
 		new Server(webClient);
+	}
+
+	// receives messages from server
+	public class messageReceiverThread implements Runnable {
+		int counter = 0;
+
+		public void run() {
+			while (true) {
+				try {
+					messageList.add(in.readUTF());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				System.out.println(messageList);
+			}
+		}
 	}
 }
