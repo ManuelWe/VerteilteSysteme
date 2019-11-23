@@ -2,3 +2,7 @@ eingabe validierung im menü
 close dhcp socket
 immer antwort geben lassen
 bei dhcp neustart clientliste anfordern
+try with resource?
+keine client ip auf server
+timeouts
+validieren, ob server wirklich down

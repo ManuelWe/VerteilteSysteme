@@ -6,7 +6,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 
@@ -20,7 +19,7 @@ public class Client {
 	private WebClient webClient = null;
 	private String clientAddress = null;
 	private String serverAddress = null;
-	private List<String> messageList = Collections.synchronizedList(new ArrayList<String>());
+	private List<String> messageList = new ArrayList<String>();
 
 	// constructor to put ip address and port
 	public Client(String serverAddress, WebClient webClient) {

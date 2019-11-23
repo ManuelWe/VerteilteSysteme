@@ -19,6 +19,7 @@ public class DhcpServer {
 		try (final DatagramSocket socket = new DatagramSocket()) {
 			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
 			ip = socket.getLocalAddress().getHostAddress();
+			socket.close();
 		}
 		String port = "8080";
 

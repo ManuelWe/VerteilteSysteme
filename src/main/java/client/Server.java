@@ -25,6 +25,7 @@ public class Server {
 	// constructor with port
 	public Server(WebClient webClient) {
 		Socket clientSocket = null;
+		this.webClient = webClient;
 
 		// starts server and waits for a connection
 		try {
