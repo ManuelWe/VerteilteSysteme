@@ -25,20 +25,4 @@ public class WebClient {
 		Builder b = service.path("dhcp/server").accept(MediaType.TEXT_PLAIN);
 		return b.get(String.class);
 	}
-
-	public void addClientAddress(String clientAddress) {
-		WebResource b = service.path("dhcp/clients");
-		b.post(String.class, clientAddress);
-	}
-
-	public void removeClientAddress(String clientAddress) {
-		WebResource b = service.path("dhcp/clients");
-		b.delete(String.class, clientAddress);
-	}
-
-	public String noServerAvailable(String clientAddress, String serverAddress) {
-		WebResource b = service.path("dhcp/serverDown/" + serverAddress);
-		return b.post(String.class, clientAddress);
-	}
-
 }

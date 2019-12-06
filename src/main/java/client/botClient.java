@@ -28,13 +28,14 @@ public class botClient implements Runnable {
 		try {
 			socket = new Socket(address, port);
 		} catch (IOException u) {
-			u.printStackTrace();
+			System.out.println("Trying local address!");
+			try {
+				// workaround to still be able to launch on laptop; not needed on raspberry
+				socket = new Socket("127.0.0.1", port);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
-
-		String ip = socket.getLocalAddress().getHostAddress();
-		int clientPort = socket.getLocalPort();
-		clientAddress = ip + ":" + clientPort;
-		webClient.addClientAddress(clientAddress);
 
 		try {
 			out = new DataOutputStream(socket.getOutputStream());
@@ -74,7 +75,6 @@ public class botClient implements Runnable {
 	}
 
 	private void closeConnection() {
-		webClient.removeClientAddress(clientAddress);
 
 		try {
 			in.close();
