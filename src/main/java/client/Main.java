@@ -20,7 +20,10 @@ public class Main {
 		System.out.println("For demo clients press ü");
 		System.out.println("******************************************************");
 		System.out.printf("Your input: ");
-		String input = scanner.nextLine();
+		// String input = scanner.nextLine();
+		String input = "c";
+
+		VoteRequestHandler voteRequestHandler = new VoteRequestHandler();
 
 		if (input.equals("c") || input.equals("client") || input.equals("ü")) {
 			WebClient webClient = new WebClient(dhcpIp);
@@ -39,7 +42,7 @@ public class Main {
 					new Thread(new botClient(serverAddress, webClient)).start();
 				}
 			} else {
-				new Client(serverAddress, webClient);
+				new Client(serverAddress, webClient, voteRequestHandler);
 			}
 		} else {
 			System.out.println("******************************************************");

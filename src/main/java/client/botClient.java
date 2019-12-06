@@ -37,11 +37,6 @@ public class botClient implements Runnable {
 			}
 		}
 
-		String ip = socket.getLocalAddress().getHostAddress();
-		int clientPort = socket.getLocalPort();
-		clientAddress = ip + ":" + clientPort;
-		webClient.addClientAddress(clientAddress);
-
 		try {
 			out = new DataOutputStream(socket.getOutputStream());
 		} catch (IOException e) {
@@ -80,7 +75,6 @@ public class botClient implements Runnable {
 	}
 
 	private void closeConnection() {
-		webClient.removeClientAddress(clientAddress);
 
 		try {
 			in.close();
