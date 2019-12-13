@@ -23,8 +23,6 @@ public class Main {
 		// String input = scanner.nextLine();
 		String input = "c";
 
-		VoteRequestHandler voteRequestHandler = new VoteRequestHandler();
-
 		if (input.equals("c") || input.equals("client") || input.equals("ü")) {
 			WebClient webClient = new WebClient(dhcpIp);
 			String serverAddress = null;
@@ -42,7 +40,7 @@ public class Main {
 					new Thread(new botClient(serverAddress, webClient)).start();
 				}
 			} else {
-				new Client(serverAddress, webClient, voteRequestHandler);
+				new Client(serverAddress, webClient);
 			}
 		} else {
 			System.out.println("******************************************************");

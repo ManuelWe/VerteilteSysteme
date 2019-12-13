@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Server {
 	// initialize socket and input stream
@@ -26,7 +25,6 @@ public class Server {
 	public List<String> voteRequestHandlerAddresses = Collections.synchronizedList(new ArrayList<String>());
 	public String serverAddress = "";
 	private boolean serverRunning = true;
-	private ReentrantLock mutex = new ReentrantLock();
 
 	// constructor with port
 	public Server(WebClient webClient) {
@@ -49,7 +47,6 @@ public class Server {
 		// String serverAddress = localAddress + ":" + server.getLocalPort();
 		serverAddress = "127.0.0.1" + ":" + server.getLocalPort();
 		webClient.setServerAddress(serverAddress);
-		System.out.println(serverAddress);
 
 		new Thread(new messageSenderThread()).start();
 		new Thread(new heartbeatThread()).start();
@@ -70,7 +67,9 @@ public class Server {
 		Message message = new Message();
 		message.setHeader("removeVoteRequestHandlerAddress");
 		message.setText(voteRequestHandlerAddress);
-		messageList.add(message);
+		synchronized (messageList) {
+			messageList.add(message);
+		}
 	}
 
 	private class serverThread implements Runnable {
@@ -105,11 +104,8 @@ public class Server {
 
 			try {
 				out = new ObjectOutputStream(clientSocket.getOutputStream());
-				mutex.lock();
-				try {
+				synchronized (outputStreams) {
 					outputStreams.add(out);
-				} finally {
-					mutex.unlock();
 				}
 				in = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
 			} catch (IOException e) {
@@ -118,7 +114,9 @@ public class Server {
 
 			message.setHeader("voteRequestHandlerAddresses");
 			message.setList(voteRequestHandlerAddresses);
-			messageList.add(message);
+			synchronized (messageList) {
+				messageList.add(message);
+			}
 		}
 
 		public void run() {
@@ -138,15 +136,21 @@ public class Server {
 						System.out.println("Client " + clientID + ": \"" + message.getText() + "\"");
 						// out.writeUTF("Message received");
 						if (!message.getText().equals("Over")) {
-							messageList.add(message);
+							synchronized (messageList) {
+								messageList.add(message);
+							}
 							dataList.add(message);
 						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
-						messageList.add(message);
+						synchronized (messageList) {
+							messageList.add(message);
+						}
 					} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.remove(message.getText());
-						messageList.add(message);
+						synchronized (messageList) {
+							messageList.add(message);
+						}
 						System.out.println(voteRequestHandlerAddresses);
 					} else {
 						System.err.println("Message with wrong header received!");
@@ -168,11 +172,8 @@ public class Server {
 		}
 
 		private void closeConnection() {
-			mutex.lock();
-			try {
+			synchronized (outputStreams) {
 				outputStreams.remove(out);
-			} finally {
-				mutex.unlock();
 			}
 
 			try {
@@ -198,18 +199,21 @@ public class Server {
 		int counter = 0;
 
 		public void run() {
+			Message message = new Message();
+
 			while (serverRunning) {
 				if (counter != messageList.size()) {
-					for (int i = 0; i < outputStreams.size(); i++) {
-						mutex.lock();
-						try {
-							try {
-								outputStreams.get(i).writeObject(messageList.get(counter));
-							} catch (IOException e) {
-								e.printStackTrace();
+					synchronized (outputStreams) {
+						for (int i = 0; i < outputStreams.size(); i++) {
+							synchronized (messageList) {
+								try {
+									message.setHeader(messageList.get(counter).getHeader());
+									message.setText(messageList.get(counter).getText());
+									outputStreams.get(i).writeObject(message);
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							}
-						} finally {
-							mutex.unlock();
 						}
 					}
 					counter++;
@@ -229,7 +233,9 @@ public class Server {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				messageList.add(message);
+				synchronized (messageList) {
+					messageList.add(message);
+				}
 			}
 		}
 	}

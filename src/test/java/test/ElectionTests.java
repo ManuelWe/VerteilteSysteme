@@ -16,7 +16,6 @@ import org.junit.Test;
 import client.Client;
 import client.Message;
 import client.Server;
-import client.VoteRequestHandler;
 import client.WebClient;
 import dhcp.DhcpServer;
 
@@ -25,13 +24,12 @@ public class ElectionTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 4;
+	final int amountClients = 10;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
 	WebClient webClient = null;
 	String serverAddress = null;
-	VoteRequestHandler voteRequestHandler = null;
 	static Boolean setupDone = false;
 
 	@Before
@@ -40,8 +38,6 @@ public class ElectionTests {
 			// new Thread(new dhcpThread()).start();
 			setupDone = true;
 		}
-
-		voteRequestHandler = new VoteRequestHandler();
 
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
@@ -56,7 +52,7 @@ public class ElectionTests {
 		server = new Server(webClient);
 		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, voteRequestHandler, "a"));
+			clients.add(new Client(serverAddress, webClient, "a"));
 		}
 	}
 
@@ -110,6 +106,12 @@ public class ElectionTests {
 	public void serverFails() {
 		String newServerAddress = "";
 
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		server.closeServer();
 
 		try {

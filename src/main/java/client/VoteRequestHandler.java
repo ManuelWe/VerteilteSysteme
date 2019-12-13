@@ -60,9 +60,9 @@ public class VoteRequestHandler {
 	}
 
 	private class clientSocketThread implements Runnable {
-		protected Socket clientSocket;
-		protected ObjectInputStream in = null;
-		protected ObjectOutputStream out;
+		private Socket clientSocket;
+		private ObjectInputStream in = null;
+		private ObjectOutputStream out = null;
 
 		private clientSocketThread(Socket clientSocket) throws IOException {
 			this.clientSocket = clientSocket;
@@ -83,7 +83,6 @@ public class VoteRequestHandler {
 				e.printStackTrace();
 			}
 
-			System.out.println(message.getElectionTerm() + "种种种种种种种种种种种种种");
 			if (message.getElectionTerm() > currentElectionTerm) {
 				currentElectionTerm = message.getElectionTerm();
 				electedServer = "";
@@ -93,12 +92,10 @@ public class VoteRequestHandler {
 				if (voted) {
 					message.setText("No");
 				} else {
+					System.out.println("VOTED FOR " + clientSocket + "VOTEDVOTEDVOTED");
 					message.setText("Yes");
 					voted = true;
 				}
-
-				System.out.println(message.getText());
-				System.out.println(message.getHeader() + "KKKKKKKKKKKKKKKKKKKKKKKKKKKK");
 
 				try {
 					out.writeObject(message);
@@ -140,5 +137,9 @@ public class VoteRequestHandler {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public void setElectionTerm(int newElectionTerm) {
+		currentElectionTerm = newElectionTerm;
 	}
 }

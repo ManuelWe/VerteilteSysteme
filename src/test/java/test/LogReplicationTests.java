@@ -30,8 +30,6 @@ public class LogReplicationTests {
 
 	@Before
 	public void setUp() throws Exception {
-		voteRequestHandler = new VoteRequestHandler();
-
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
 		while (serverAddress == null) {
@@ -45,7 +43,7 @@ public class LogReplicationTests {
 		server = new Server(webClient);
 		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, voteRequestHandler, "a"));
+			clients.add(new Client(serverAddress, webClient, "a"));
 		}
 	}
 
