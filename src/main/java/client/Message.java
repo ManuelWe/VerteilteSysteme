@@ -1,15 +1,15 @@
 package client;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Message implements Serializable {
 	private static final long serialVersionUID = 4618450393393898072L;
 	private String header = null;
 	private String text = null;
 	private int electionTerm = 0;
-	private List<String> list = new ArrayList<String>();
+	private CopyOnWriteArrayList<String> list = new CopyOnWriteArrayList<String>();
 
 	public String getHeader() {
 		return header;
@@ -35,11 +35,15 @@ public class Message implements Serializable {
 		return electionTerm;
 	}
 
-	public void setList(List<String> list) {
-		this.list = list;
+	public void setList(CopyOnWriteArrayList<String> list) {
+		synchronized (list) {
+			this.list = list;
+		}
 	}
 
 	public List<String> getList() {
-		return list;
+		synchronized (list) {
+			return list;
+		}
 	}
 }

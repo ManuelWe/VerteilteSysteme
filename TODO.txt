@@ -3,4 +3,8 @@ immer antwort geben lassen
 timeouts
 
 
-election race condition???
+voting but not connecting
+thread for every outputstream?
+specify size of array on initialization?
+handle socket timeouts
+

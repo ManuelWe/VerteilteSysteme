@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +44,7 @@ public class LogReplicationTests {
 		server = new Server(webClient);
 		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, "a"));
+			clients.add(new Client(serverAddress, webClient, true));
 		}
 	}
 
@@ -84,5 +85,12 @@ public class LogReplicationTests {
 		sendMessagesToServer();
 
 		// TODO check, if files are equal
+	}
+
+	@After
+	public void teardown() {
+		for (Client client : clients) {
+			client.stopClient();
+		}
 	}
 }

@@ -1,6 +1,5 @@
 package client;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -12,8 +11,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 
@@ -31,14 +33,16 @@ public class Client {
 	private boolean election = false;
 	private VoteRequestHandler voteRequestHandler = null;
 	private String voteRequestHandlerAddress = "";
-	private List<String> voteRequestHandlerAddresses = new ArrayList<String>();
+	private List<String> voteRequestHandlerAddresses = Collections.synchronizedList(new ArrayList<String>());
 	private int votes = 0;
 	private boolean startNewServer = false;
 	private boolean closeConnection = false;
 	private boolean clientRunning = true;
 	private boolean connectToNewServer = false;
+	private String tempServerAddress = "";
+	private Server server = null;
 
-	public Client(String serverAddress, WebClient webClient, String a) {
+	public Client(String serverAddress, WebClient webClient, boolean test) {
 		this.webClient = webClient;
 		this.serverAddress = serverAddress;
 		voteRequestHandler = new VoteRequestHandler();
@@ -51,49 +55,11 @@ public class Client {
 		System.out.println(address + ":" + port);
 		try {
 			socket = new Socket(address, port);
+			socket.setSoTimeout(10000);
 			try {
 				scanner = new Scanner(System.in);
 				out = new ObjectOutputStream(socket.getOutputStream());
-				in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-
-			new Thread(new messageReceiverThread()).start();
-			new Thread(new heartbeatMonitorThread()).start();
-			new Thread(new electionHandlerThread()).start();
-
-			Message message = new Message();
-			message.setHeader("voteRequestHandlerAddress");
-			message.setText(voteRequestHandlerAddress);
-			try {
-				out.writeObject(message);
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-		} catch (IOException u) {
-			u.printStackTrace();
-			startNewServer();
-		}
-	}
-
-	// constructor to put ip address and port
-	public Client(String serverAddress, WebClient webClient) {
-		this.webClient = webClient;
-		this.serverAddress = serverAddress;
-		voteRequestHandler = new VoteRequestHandler();
-		voteRequestHandlerAddress = voteRequestHandler.getAddress();
-
-		System.out.println("CLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENT");
-
-		String address = serverAddress.split(":")[0];
-		int port = Integer.parseInt(serverAddress.split(":")[1]);
-		try {
-			socket = new Socket(address, port);
-			try {
-				scanner = new Scanner(System.in);
-				out = new ObjectOutputStream(socket.getOutputStream());
-				in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
+				in = new ObjectInputStream(socket.getInputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -111,10 +77,12 @@ public class Client {
 				e1.printStackTrace();
 			}
 
-			clientMain();
+			if (!test) {
+				clientMain();
+			}
 		} catch (IOException u) {
 			startNewServer();
-			System.out.println("Start server from 118");
+			System.out.println("Started server from 85");
 		}
 	}
 
@@ -133,14 +101,6 @@ public class Client {
 		} while ((!message.getText().equals("Over")));
 		System.out.println("Closing connection to server");
 		scanner.close();
-		message = new Message();
-		message.setHeader("removeVoteRequestHandlerAddress");
-		message.setText(voteRequestHandlerAddress);
-		try {
-			out.writeObject(message);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
 
 		closeConnection();
 		System.exit(0);
@@ -165,12 +125,8 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		Server server = new Server(webClient);
+		server = new Server(webClient);
 		serverAddress = server.serverAddress;
-		voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
-		server.voteRequestHandlerAddresses = voteRequestHandlerAddresses;
-		// server.removeVoteRequestHandlerAddress(voteRequestHandlerAddress); //TODO:
-		// also remove in voterequest handler
 		clientRunning = false;
 	}
 
@@ -182,14 +138,25 @@ public class Client {
 
 		try {
 			socket = new Socket(serverAddress.split(":")[0], Integer.parseInt(serverAddress.split(":")[1]));
+			socket.setSoTimeout(10000);
 		} catch (Exception e) {
 			e.printStackTrace();
+			election = true;
 		}
+
 		try {
 			out = new ObjectOutputStream(socket.getOutputStream());
-			in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
+			in = new ObjectInputStream(socket.getInputStream());
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+		Message message = new Message();
+		message.setHeader("voteRequestHandlerAddress");
+		message.setText(voteRequestHandlerAddress);
+		try {
+			out.writeObject(message);
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
 		System.out.printf("Your input: ");
 	}
@@ -238,6 +205,8 @@ public class Client {
 					System.out.println(voteRequestHandlerAddresses);
 				} else if (message.getHeader().equals("voteRequestHandlerAddresses")) {
 					voteRequestHandlerAddresses = message.getList();
+					voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
+					System.out.println(voteRequestHandlerAddresses);
 				} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
 					voteRequestHandlerAddresses.remove(message.getText());
 					System.out.println(voteRequestHandlerAddresses);
@@ -245,6 +214,7 @@ public class Client {
 					System.err.println("Unknown header received!");
 					System.err.println(message.getHeader());
 				}
+				heartbeatCounter = 3;
 			}
 		}
 	}
@@ -299,16 +269,17 @@ public class Client {
 		public void run() {
 			while (clientRunning) {
 				if (election) {
-					int electionTimeout = (int) (Math.random() * ((300 - 150) + 1)) + 150;
+					int electionWait = (int) (Math.random() * ((1000 - 0) + 1)) + 0;
 					try {
-						Thread.sleep(electionTimeout);
+						Thread.sleep(electionWait);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
 
-					if (voteRequestHandler.currentElectionTerm == currentElectionTerm) {
-						System.out.println("Election");
+					if (voteRequestHandler.getElectionTerm() == currentElectionTerm) {
 						currentElectionTerm++;
+						Timestamp ts = new Timestamp(new Date().getTime());
+						System.out.println("Election for term: " + currentElectionTerm + " " + ts);
 						voteRequestHandler.setElectionTerm(currentElectionTerm);
 						if (voteRequestHandlerAddresses.size() == 0) {
 							System.out.println("Start server from 322");
@@ -317,6 +288,7 @@ public class Client {
 							closeConnection();
 						} else {
 							votes = 0;
+							tempServerAddress = "";
 							System.out.println(voteRequestHandlerAddresses);
 							for (String voteRequestHandlerAddress : voteRequestHandlerAddresses) {
 								new Thread(new voteRequestHandlerThread(voteRequestHandlerAddress)).start();
@@ -326,7 +298,8 @@ public class Client {
 
 					boolean serverStarted = false;
 					startNewServer = false;
-					while (voteRequestHandler.electedServer.equals("")) {
+					int electionTimeout = 20;
+					while (voteRequestHandler.electedServer.equals("") && electionTimeout > 0) {
 						if (startNewServer && !serverStarted) {
 							System.out.println("Start new server 336");
 							startNewServer();
@@ -337,21 +310,31 @@ public class Client {
 							closeConnection();
 							closeConnection = false;
 						}
+						try {
+							Thread.sleep(200);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+						electionTimeout--;
 					}
-					if (clientRunning) {
-						System.out.println(voteRequestHandlerAddresses);
-						serverAddress = voteRequestHandler.electedServer;
-						connectToNewServer();
+					if (electionTimeout > 0) {
+						if (clientRunning) {
+							System.out.println(voteRequestHandlerAddresses);
+							serverAddress = voteRequestHandler.electedServer;
+							voteRequestHandler.electedServer = "";
+							heartbeatCounter = 3;
+							connectToNewServer();
+						}
+						election = false;
+
 					}
-					election = false;
-					heartbeatCounter = 3;
 				}
 			}
 		}
 	}
 
-	public class voteRequestHandlerThread implements Runnable {
-		private String voteRequestHandlerAddress;
+	private class voteRequestHandlerThread implements Runnable {
+		String voteRequestHandlerAddress;
 
 		public voteRequestHandlerThread(String voteRequestHandlerAddress) {
 			this.voteRequestHandlerAddress = voteRequestHandlerAddress;
@@ -366,13 +349,14 @@ public class Client {
 			int port = Integer.parseInt(voteRequestHandlerAddress.split(":")[1]);
 			try {
 				socket = new Socket(address, port);
+				socket.setSoTimeout(10000);
 			} catch (IOException u) {
 				u.printStackTrace();
 			}
 
 			try {
 				out = new ObjectOutputStream(socket.getOutputStream());
-				in = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()));
+				in = new ObjectInputStream(socket.getInputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -400,25 +384,30 @@ public class Client {
 				System.err.println(message.getHeader());
 			}
 
-			System.out.println(votes);
-			int timeoutCounter = 4;
-			while (votes < (voteRequestHandlerAddresses.size() + 1) / 2 && timeoutCounter >= 0) {
-				System.out.println("votes" + votes);
+			int electionResponseTimeout = 40;
+			while (votes < (voteRequestHandlerAddresses.size() + 1) / 2 && electionResponseTimeout > 0) {
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				timeoutCounter--;
+				electionResponseTimeout--;
 			}
 			System.out.println("votes" + votes);
 
-			if (timeoutCounter != 0) {
-				String tempServerAddress = serverAddress;
-				startNewServer = true;
+			if (electionResponseTimeout > 0) {
+				if (!startNewServer) {
+					startNewServer = true;
+					tempServerAddress = serverAddress;
+				}
 
-				while (tempServerAddress.equals(serverAddress))
-					;
+				while (tempServerAddress.equals(serverAddress)) {
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
+				}
 
 				message = new Message();
 				message.setHeader("newLeader");
@@ -435,6 +424,14 @@ public class Client {
 				if (!closeConnection)
 					closeConnection = true;
 				;
+			} else {
+				message = new Message();
+				message.setHeader("electionCanceled");
+				try {
+					out.writeObject(message);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -451,5 +448,14 @@ public class Client {
 
 	public String getServerAddress() {
 		return serverAddress;
+	}
+
+	public void stopClient() {
+		clientRunning = false;
+		closeConnection();
+	}
+
+	public Server getServerInstance() {
+		return server;
 	}
 }
