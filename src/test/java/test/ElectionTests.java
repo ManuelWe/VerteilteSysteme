@@ -123,7 +123,7 @@ public class ElectionTests {
 			e.printStackTrace();
 		}
 
-		assertEquals(amountClients, server.dataList.size());
+		assertEquals(amountClients, server.getDataList().size());
 	}
 
 	@Test
@@ -131,7 +131,7 @@ public class ElectionTests {
 		String newServerAddress = "";
 
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(15000);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -139,7 +139,7 @@ public class ElectionTests {
 		server.closeServer();
 
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(30000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -202,6 +202,7 @@ public class ElectionTests {
 
 	@After
 	public void teardown() {
+		server.closeServer();
 		for (Client client : clients) {
 			client.stopClient();
 		}

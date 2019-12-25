@@ -77,7 +77,7 @@ public class LogReplicationTests {
 			e.printStackTrace();
 		}
 
-		assertEquals(amountClients, server.dataList.size());
+		assertEquals(amountClients, server.getDataList().size());
 	}
 
 	@Test

@@ -14,7 +14,7 @@ public class DhcpServer {
 	public HttpServer server = null;
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-		String ip;
+		String ip = "";
 		// get ip address of localhost
 		try (final DatagramSocket socket = new DatagramSocket()) {
 			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);

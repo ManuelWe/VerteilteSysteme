@@ -8,3 +8,7 @@ thread for every outputstream?
 specify size of array on initialization?
 handle socket timeouts
 
+create server.txt when not available
+
+cyclic barrier for messageSenderThreads in server?
+
