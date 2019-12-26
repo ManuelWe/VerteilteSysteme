@@ -2,10 +2,12 @@ package test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -14,6 +16,7 @@ import client.Message;
 import client.Server;
 import client.VoteRequestHandler;
 import client.WebClient;
+
 
 public class LogReplicationTests {
 
@@ -27,6 +30,7 @@ public class LogReplicationTests {
 	WebClient webClient = null;
 	String serverAddress = null;
 	VoteRequestHandler voteRequestHandler = null;
+	List<File> files = new ArrayList<File>();
 
 	@Before
 	public void setUp() throws Exception {
@@ -84,7 +88,33 @@ public class LogReplicationTests {
 	@Test
 	public void filesEqual() {
 		sendMessagesToServer();
-
-		// TODO check, if files are equal
+		for (int i = 0; i < clients.size(); i++) {
+			files.add(new File("OutputFile" + clients.get(i).getPort() + ".txt")); 
+		}
+		boolean output = false;
+		try {
+			if(FileUtils.contentEquals(files.get(0), files.get(1))) {
+				if(FileUtils.contentEquals(files.get(0), files.get(2))) {
+					if(FileUtils.contentEquals(files.get(0), files.get(3))) {
+						if(FileUtils.contentEquals(files.get(1), files.get(2))) {
+							if(FileUtils.contentEquals(files.get(1), files.get(3))) {
+								if(FileUtils.contentEquals(files.get(2), files.get(3))) {
+									output = true;
+								}
+								else output = false;
+							}
+							else output = false;
+						}
+						else output = false;
+					}
+					else output = false;
+				}
+				else output = false;
+			}
+			else output = false;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		assertEquals(true, output);
 	}
 }
