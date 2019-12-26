@@ -1,6 +1,5 @@
 package client;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -8,32 +7,32 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.AbstractMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Vector;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
-	// initialize socket and input stream
 	private ServerSocket server = null;
-	private int connections = 0;
-	private WebClient webClient;
-	private List<String> clientAddresses = new ArrayList<String>();
-	private List<ObjectOutputStream> outputStreams = Collections.synchronizedList(new ArrayList<ObjectOutputStream>());
-	public List<Message> messageList = Collections.synchronizedList(new ArrayList<Message>());
-	public List<Message> dataList = Collections.synchronizedList(new ArrayList<Message>());
-	public List<String> voteRequestHandlerAddresses = Collections.synchronizedList(new ArrayList<String>());
-	public String serverAddress = "";
+	private AtomicInteger connections = new AtomicInteger(0);
+	private Vector<ObjectOutputStream> outputStreams = new Vector<ObjectOutputStream>();
+	private BlockingQueue<Message> messageList = new LinkedBlockingQueue<Message>();
+	private Vector<Message> entriesList = new Vector<Message>();
+	private CopyOnWriteArrayList<String> voteRequestHandlerAddresses = new CopyOnWriteArrayList<String>();
+	private String serverAddress = "";
 	private boolean serverRunning = true;
-	private ReentrantLock mutex = new ReentrantLock();
+	private AtomicBoolean messageSent = new AtomicBoolean(false);
+	private Map<Integer, Entry<Message, Integer>> uncommittedEntries = new ConcurrentHashMap<Integer, Entry<Message, Integer>>();
+	private AtomicInteger sequenceNumber = new AtomicInteger(0);
 
-	// constructor with port
 	public Server(WebClient webClient) {
-		Socket clientSocket = null;
-		this.webClient = webClient;
-
-		// starts server and waits for a connection
 		try {
 			server = new ServerSocket(0);
 		} catch (IOException i) {
@@ -46,39 +45,22 @@ public class Server {
 		} catch (UnknownHostException e1) {
 			e1.printStackTrace();
 		}
-		// String serverAddress = localAddress + ":" + server.getLocalPort();
+		// serverAddress = localAddress + ":" + server.getLocalPort();
 		serverAddress = "127.0.0.1" + ":" + server.getLocalPort();
 		webClient.setServerAddress(serverAddress);
-		System.out.println(serverAddress);
 
 		new Thread(new messageSenderThread()).start();
 		new Thread(new heartbeatThread()).start();
+		new Thread(new benchmarkingThread()).start();
 
 		System.out.println("SERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVER");
 		System.out.println("Log files: ");
 
-		new Thread(new serverThread(clientSocket)).start();
-	}
-
-	public void removeVoteRequestHandlerAddress(String voteRequestHandlerAddress) {
-		try { // TODO: remove when message commits work
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
-		Message message = new Message();
-		message.setHeader("removeVoteRequestHandlerAddress");
-		message.setText(voteRequestHandlerAddress);
-		messageList.add(message);
+		new Thread(new serverThread()).start();
 	}
 
 	private class serverThread implements Runnable {
-		private Socket clientSocket = null;
-
-		public serverThread(Socket clientSocket) {
-			this.clientSocket = clientSocket;
-		}
+		Socket clientSocket = null;
 
 		public void run() {
 			while (serverRunning) {
@@ -94,86 +76,111 @@ public class Server {
 		}
 	}
 
-	public class clientSocketThread implements Runnable {
-		protected Socket clientSocket;
-		protected ObjectInputStream in = null;
-		protected ObjectOutputStream out;
+	private class clientSocketThread implements Runnable {
+		Socket clientSocket = null;
+		ObjectInputStream in = null;
+		ObjectOutputStream out = null;
+		String voteRequestHandlerAddress = null;
 
 		private clientSocketThread(Socket clientSocket) throws IOException {
 			this.clientSocket = clientSocket;
-			Message message = new Message();
 
 			try {
 				out = new ObjectOutputStream(clientSocket.getOutputStream());
-				mutex.lock();
-				try {
-					outputStreams.add(out);
-				} finally {
-					mutex.unlock();
-				}
-				in = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+				in = new ObjectInputStream(clientSocket.getInputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
+			// new Thread(new messageSenderThread(out, messageList.size())).start();
+			Message message = new Message();
 			message.setHeader("voteRequestHandlerAddresses");
 			message.setList(voteRequestHandlerAddresses);
-			messageList.add(message);
+			out.writeObject(message);
+
+			outputStreams.add(out);
 		}
 
 		public void run() {
-			String clientID = Integer.toString(connections);
-			connections++;
-//			try {
-//				out.writeUTF(clientID);
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			}
-			System.out.println("Client " + clientID + " is now connected to the socket");
+			int clientID = connections.getAndIncrement();
+			int acknowledgesNeeded = 0;
 			Message message = null;
+
+			System.out.println("Client " + clientID + " is now connected to the socket");
+
 			do {
 				try {
 					message = (Message) in.readObject();
-					if (message.getHeader().equals("data")) {
-						System.out.println("Client " + clientID + ": \"" + message.getText() + "\"");
-						// out.writeUTF("Message received");
-						if (!message.getText().equals("Over")) {
-							messageList.add(message);
-							dataList.add(message);
+					if (message.getHeader().equals("appendEntry")) {
+						synchronized (message) {
+							message.setSequenceNumber(sequenceNumber.getAndIncrement());
+							try {
+								messageList.put(message);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+						}
+						acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
+						uncommittedEntries.put(message.getSequenceNumber(),
+								new AbstractMap.SimpleEntry<Message, Integer>(message, acknowledgesNeeded));
+					} else if (message.getHeader().equals("acknowledgeEntry")) {
+						synchronized (uncommittedEntries) {
+							if (uncommittedEntries.containsKey(message.getSequenceNumber())) {
+								uncommittedEntries.compute(message.getSequenceNumber(), (key, val) -> {
+									val.setValue(val.getValue() - 1);
+									return val;
+								});
+								if (uncommittedEntries.get(message.getSequenceNumber()).getValue() == 0) {
+									System.out.println("Client " + clientID + ": \""
+											+ uncommittedEntries.get(message.getSequenceNumber()).getKey().getText()
+											+ "\"");
+									Message commitMessage = new Message();
+									commitMessage.setHeader("commitEntry");
+									commitMessage.setSequenceNumber(message.getSequenceNumber());
+									try {
+										messageList.put(commitMessage);
+									} catch (InterruptedException e) {
+										e.printStackTrace();
+									}
+									entriesList.add(message);
+									uncommittedEntries.remove(message.getSequenceNumber());
+									System.out.println(uncommittedEntries.size() + "left");
+								}
+							}
 						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
-						messageList.add(message);
-					} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
-						voteRequestHandlerAddresses.remove(message.getText());
-						messageList.add(message);
-						System.out.println(voteRequestHandlerAddresses);
+						voteRequestHandlerAddress = message.getText();
+						try {
+							messageList.put(message);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					} else {
 						System.err.println("Message with wrong header received!");
 					}
-					System.out.println(voteRequestHandlerAddresses);
 				} catch (IOException i) {
 					break;
 				} catch (ClassNotFoundException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-			} while (serverRunning && !message.getText().equals("Over"));
+			} while (serverRunning);
 			System.out.println("Closing connection with Client " + clientID);
-			String clientAddress = clientSocket.getInetAddress().toString().split("/")[1] + ":"
-					+ clientSocket.getPort();
-			clientAddresses.remove(clientAddress);
-			System.out.println("Connected Clients:" + Arrays.toString(clientAddresses.toArray()));
+
 			closeConnection();
 		}
 
 		private void closeConnection() {
-			mutex.lock();
+			outputStreams.remove(out);
+			Message message = new Message();
+			message.setHeader("removeVoteRequestHandlerAddress");
+			message.setText(voteRequestHandlerAddress);
 			try {
-				outputStreams.remove(out);
-			} finally {
-				mutex.unlock();
+				messageList.put(message);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
 			}
+			voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
 
 			try {
 				in.close();
@@ -193,32 +200,61 @@ public class Server {
 		}
 	}
 
+//	public class messageSenderThread implements Runnable {
+//		ObjectOutputStream out = null;
+//		int counter = 0;
+//
+//		public messageSenderThread(ObjectOutputStream out, int counter) {
+//			this.out = out;
+//			this.counter = counter;
+//		}
+//
+//		public void run() {
+//			boolean socketOpen = true;
+//
+//			while (serverRunning && socketOpen) {
+//				if (counter != messageList.size()) {
+//					try {
+//						out.writeObject(messageList.get(counter));
+//					} catch (IOException e) {
+//						socketOpen = false;
+//						// TODO handle
+//					}
+//					counter++;
+//				}
+//			}
+//		}
+//	}
+
 	// sends incoming messages to all clients
 	public class messageSenderThread implements Runnable {
-		int counter = 0;
 
 		public void run() {
+			Message message = null;
+			Iterator<ObjectOutputStream> it = null;
+
 			while (serverRunning) {
-				if (counter != messageList.size()) {
-					for (int i = 0; i < outputStreams.size(); i++) {
-						mutex.lock();
+				try {
+					message = messageList.take();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+				messageSent.set(true);
+
+				synchronized (outputStreams) {
+					for (it = outputStreams.iterator(); it.hasNext();) {
 						try {
-							try {
-								outputStreams.get(i).writeObject(messageList.get(counter));
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						} finally {
-							mutex.unlock();
+							it.next().writeObject(message);
+						} catch (IOException e) {
+							e.printStackTrace();
 						}
 					}
-					counter++;
 				}
 			}
 		}
 	}
 
-	public class heartbeatThread implements Runnable {
+	private class heartbeatThread implements Runnable {
 		Message message = new Message();
 
 		public void run() {
@@ -229,9 +265,43 @@ public class Server {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				messageList.add(message);
+				// only send heartbeat, when no message was sent
+				if (!messageSent.getAndSet(false)) {
+					try {
+						messageList.put(message);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
 			}
 		}
+	}
+
+	// TODO remove
+	private class benchmarkingThread implements Runnable {
+		public void run() {
+			while (serverRunning) {
+				if (messageList.size() > 15) {
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					if (messageList.size() > 15) {
+						System.err.println("Too many messages in queue " + messageList.size());
+						System.exit(0);
+					}
+				}
+			}
+		}
+	}
+
+	public String getServerAddress() {
+		return serverAddress;
+	}
+
+	public Vector<Message> getEntriesList() {
+		return entriesList;
 	}
 
 	// ############################## Testing Methods #########################

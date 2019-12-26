@@ -1,6 +1,5 @@
 package client;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -8,15 +7,17 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VoteRequestHandler {
 	private ServerSocket server = null;
 	private String voteRequestHandlerAddress = "";
-	public int currentElectionTerm = 0;
-	public String electedServer = "";
-	private boolean voted = false;
+	private int currentElectionTerm = 0;
+	private AtomicBoolean voted = new AtomicBoolean(false);
+	private Client client = null;
 
-	public VoteRequestHandler() {
+	public VoteRequestHandler(Client client) {
+		this.client = client;
 		try {
 			server = new ServerSocket(0);
 		} catch (IOException e) {
@@ -29,14 +30,11 @@ public class VoteRequestHandler {
 		} catch (UnknownHostException e1) {
 			e1.printStackTrace();
 		}
-		// String serverAddress = localAddress + ":" + server.getLocalPort();
+		// voteRequestHandlerAddress = localAddress + ":" + server.getLocalPort();
 		voteRequestHandlerAddress = "127.0.0.1" + ":" + server.getLocalPort();
+		System.out.println(voteRequestHandlerAddress);
 
 		new Thread(new voteRequestHandlerThread()).start();
-	}
-
-	public String getAddress() {
-		return voteRequestHandlerAddress;
 	}
 
 	private class voteRequestHandlerThread implements Runnable {
@@ -45,6 +43,7 @@ public class VoteRequestHandler {
 			while (true) {
 				try {
 					clientSocket = server.accept();
+					clientSocket.setSoTimeout(20000);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -54,21 +53,20 @@ public class VoteRequestHandler {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-
 			}
 		}
 	}
 
 	private class clientSocketThread implements Runnable {
-		protected Socket clientSocket;
-		protected ObjectInputStream in = null;
-		protected ObjectOutputStream out;
+		private Socket clientSocket = null;
+		private ObjectInputStream in = null;
+		private ObjectOutputStream out = null;
 
 		private clientSocketThread(Socket clientSocket) throws IOException {
 			this.clientSocket = clientSocket;
 			try {
 				out = new ObjectOutputStream(clientSocket.getOutputStream());
-				in = new ObjectInputStream(new BufferedInputStream(clientSocket.getInputStream()));
+				in = new ObjectInputStream(clientSocket.getInputStream());
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -83,41 +81,41 @@ public class VoteRequestHandler {
 				e.printStackTrace();
 			}
 
-			System.out.println(message.getElectionTerm() + "种种种种种种种种种种种种种");
-			if (message.getElectionTerm() > currentElectionTerm) {
+			if (!voted.get() && message.getElectionTerm() > currentElectionTerm) {
+				voted.set(true);
 				currentElectionTerm = message.getElectionTerm();
-				electedServer = "";
-
+				System.out.println("VOTED FOR " + clientSocket + "VOTEDVOTEDVOTED " + currentElectionTerm);
 				message = new Message();
 				message.setHeader("electionResponse");
-				if (voted) {
-					message.setText("No");
-				} else {
-					message.setText("Yes");
-					voted = true;
-				}
+				message.setText("Yes");
+			} else {
+				message = new Message();
+				message.setHeader("electionResponse");
+				message.setText("No");
+			}
 
-				System.out.println(message.getText());
-				System.out.println(message.getHeader() + "KKKKKKKKKKKKKKKKKKKKKKKKKKKK");
+			try {
+				out.writeObject(message);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
-				try {
-					out.writeObject(message);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+			try {
+				message = (Message) in.readObject();
+			} catch (ClassNotFoundException | IOException e) {
+				e.printStackTrace();
+			}
 
-				try {
-					message = (Message) in.readObject();
-				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace();
-				}
+			if (message.getHeader().equals("newLeader")) {
+				System.err.println("Got leader address");
+				client.setElectedServer(message.getText());
 
-				if (message.getHeader().equals("newLeader")) {
-					electedServer = message.getText();
-					voted = false;
-				} else {
-					System.err.println("Unexpected header in election!");
-				}
+				voted.set(false);
+			} else if (message.getHeader().equals("electionCanceled")) {
+
+			} else {
+				System.err.println("Unexpected header in election!");
+				System.err.println(message.getHeader());
 			}
 
 			closeConnection();
@@ -140,5 +138,17 @@ public class VoteRequestHandler {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public void setElectionTerm(int newElectionTerm) {
+		currentElectionTerm = newElectionTerm;
+	}
+
+	public int getElectionTerm() {
+		return currentElectionTerm;
+	}
+
+	public String getAddress() {
+		return voteRequestHandlerAddress;
 	}
 }

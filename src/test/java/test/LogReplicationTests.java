@@ -7,7 +7,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+
 import org.apache.commons.io.FileUtils;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,8 +37,6 @@ public class LogReplicationTests {
 
 	@Before
 	public void setUp() throws Exception {
-		voteRequestHandler = new VoteRequestHandler();
-
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
 		while (serverAddress == null) {
@@ -49,7 +50,7 @@ public class LogReplicationTests {
 		server = new Server(webClient);
 		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, voteRequestHandler, "a"));
+			clients.add(new Client(serverAddress, webClient, true));
 		}
 	}
 
@@ -69,7 +70,7 @@ public class LogReplicationTests {
 			}
 			Message message = new Message();
 			message.setText("Test " + clients.get(i));
-			message.setHeader("data");
+			message.setHeader("appendEntry");
 			try {
 				clients.get(i).getOutputStream().writeObject(message);
 			} catch (IOException e) {
@@ -82,7 +83,7 @@ public class LogReplicationTests {
 			e.printStackTrace();
 		}
 
-		assertEquals(amountClients, server.dataList.size());
+		assertEquals(amountClients, server.getEntriesList().size());
 	}
 
 	@Test
@@ -100,5 +101,12 @@ public class LogReplicationTests {
 			e.printStackTrace();
 		}
 		assertEquals(true, output);
+	}
+
+	@After
+	public void teardown() {
+		for (Client client : clients) {
+			client.stopClient();
+		}
 	}
 }
