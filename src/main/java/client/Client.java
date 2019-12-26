@@ -257,16 +257,18 @@ public class Client {
 		}
 	}
 
-	private void writeToFile(String messageText) {		
-		File file = new File("OutputFile" + socket.getLocalPort() + ".txt");
+	private void writeToFile(String messageText) {
+		File dir = new File("OutputFiles");
+		File file = new File("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
 		try {
+			dir.mkdir();
 			file.createNewFile();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 		List<String> lines = Arrays.asList(messageText);
-		Path filePath = Paths.get("OutputFile" + socket.getLocalPort() + ".txt");
+		Path filePath = Paths.get("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
 
 		try {
 			Files.write(filePath, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);

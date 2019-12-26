@@ -89,29 +89,13 @@ public class LogReplicationTests {
 	public void filesEqual() {
 		sendMessagesToServer();
 		for (int i = 0; i < clients.size(); i++) {
-			files.add(new File("OutputFile" + clients.get(i).getPort() + ".txt")); 
+			files.add(new File("OutputFiles/OutputFile" + clients.get(i).getPort() + ".txt")); 
 		}
-		boolean output = false;
+		boolean output = true;
 		try {
-			if(FileUtils.contentEquals(files.get(0), files.get(1))) {
-				if(FileUtils.contentEquals(files.get(0), files.get(2))) {
-					if(FileUtils.contentEquals(files.get(0), files.get(3))) {
-						if(FileUtils.contentEquals(files.get(1), files.get(2))) {
-							if(FileUtils.contentEquals(files.get(1), files.get(3))) {
-								if(FileUtils.contentEquals(files.get(2), files.get(3))) {
-									output = true;
-								}
-								else output = false;
-							}
-							else output = false;
-						}
-						else output = false;
-					}
-					else output = false;
-				}
-				else output = false;
+			for (int i = 0; i < files.size(); i++) {
+				if(!(FileUtils.contentEquals(files.get(0), files.get(i)))) output = false;
 			}
-			else output = false;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
