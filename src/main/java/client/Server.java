@@ -19,7 +19,7 @@ public class Server {
 	private ServerSocket server = null;
 	private int connections = 0;
 	private WebClient webClient;
-	public List<String> clientAddresses = new ArrayList<String>();
+	private List<String> clientAddresses = new ArrayList<String>();
 	private List<ObjectOutputStream> outputStreams = Collections.synchronizedList(new ArrayList<ObjectOutputStream>());
 	public List<Message> messageList = Collections.synchronizedList(new ArrayList<Message>());
 	public List<Message> dataList = Collections.synchronizedList(new ArrayList<Message>());
