@@ -277,17 +277,17 @@ public class Client {
 	}
 
 	private void writeToFile(String messageText) {
-		// TODO each client has to write to separate file
-
-		File file = new File("OutputFile.txt");
+		File dir = new File("OutputFiles");
+		File file = new File("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
 		try {
+			dir.mkdir();
 			file.createNewFile();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 		List<String> lines = Arrays.asList(messageText);
-		Path filePath = Paths.get("OutputFile.txt");
+		Path filePath = Paths.get("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
 
 		try {
 			Files.write(filePath, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
@@ -531,6 +531,10 @@ public class Client {
 
 	public String getServerAddress() {
 		return serverAddress;
+	}
+	
+	public String getPort() {
+		return "" + socket.getLocalPort();
 	}
 
 	public void stopClient() {

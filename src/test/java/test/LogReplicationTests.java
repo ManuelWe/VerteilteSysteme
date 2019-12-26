@@ -2,9 +2,13 @@ package test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+
+import org.apache.commons.io.FileUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -15,6 +19,7 @@ import client.Message;
 import client.Server;
 import client.VoteRequestHandler;
 import client.WebClient;
+
 
 public class LogReplicationTests {
 
@@ -28,6 +33,7 @@ public class LogReplicationTests {
 	WebClient webClient = null;
 	String serverAddress = null;
 	VoteRequestHandler voteRequestHandler = null;
+	List<File> files = new ArrayList<File>();
 
 	@Before
 	public void setUp() throws Exception {
@@ -83,8 +89,18 @@ public class LogReplicationTests {
 	@Test
 	public void filesEqual() {
 		sendMessagesToServer();
-
-		// TODO check, if files are equal
+		for (int i = 0; i < clients.size(); i++) {
+			files.add(new File("OutputFiles/OutputFile" + clients.get(i).getPort() + ".txt")); 
+		}
+		boolean output = true;
+		try {
+			for (int i = 0; i < files.size(); i++) {
+				if(!(FileUtils.contentEquals(files.get(0), files.get(i)))) output = false;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		assertEquals(true, output);
 	}
 
 	@After
