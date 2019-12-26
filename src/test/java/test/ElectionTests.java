@@ -110,7 +110,7 @@ public class ElectionTests {
 			}
 			Message message = new Message();
 			message.setText("Test" + clients.get(i));
-			message.setHeader("data");
+			message.setHeader("appendEntry");
 			try {
 				clients.get(i).getOutputStream().writeObject(message);
 			} catch (IOException e) {
@@ -123,7 +123,7 @@ public class ElectionTests {
 			e.printStackTrace();
 		}
 
-		assertEquals(amountClients, server.getDataList().size());
+		assertEquals(amountClients, server.getEntriesList().size());
 	}
 
 	@Test

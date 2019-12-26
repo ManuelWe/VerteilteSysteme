@@ -15,7 +15,9 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -43,6 +45,7 @@ public class Client {
 	private Server server = null;
 	private String electedServerAddress = null;
 	private Object electionLock = new Object();
+	private Map<Integer, Message> uncommittedEntries = new HashMap<Integer, Message>();
 
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
@@ -96,15 +99,28 @@ public class Client {
 			message = new Message();
 			try {
 				message.setText(scanner.nextLine());
-				message.setHeader("data");
-				out.writeObject(message);
+				message.setHeader("appendEntry");
+				String a[] = { "a", "b", "c", "d" };
+				for (int i = 0; i < 2; i++) {
+					synchronized (out) {
+						message.setText(a[i]);
+						out.writeObject(message);
+					}
+					out.reset();
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
 			} catch (IOException c) {
 				election.set(true);
 				synchronized (electionLock) {
 					electionLock.notify();
 				}
 			}
-		} while ((!message.getText().equals("Over")) && clientRunning);
+		} while (clientRunning);
 		System.out.println("Closing connection to server");
 		scanner.close();
 
@@ -163,7 +179,9 @@ public class Client {
 		message.setHeader("voteRequestHandlerAddress");
 		message.setText(voteRequestHandlerAddress);
 		try {
-			out.writeObject(message);
+			synchronized (out) {
+				out.writeObject(message);
+			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -174,6 +192,8 @@ public class Client {
 	private class messageReceiverThread implements Runnable {
 		public void run() {
 			Message message = null;
+			String messageText = null;
+
 			while (clientRunning) {
 				if (election.get()) {
 					synchronized (election) {
@@ -215,10 +235,26 @@ public class Client {
 				}
 
 				heartbeatCounter = 3;
-				if (message.getHeader().equals("data")) {
-					messageList.add(message.getText());
-					writeToFile(message.getText());
-					System.out.println(messageList);
+				if (message.getHeader().equals("appendEntry")) {
+					System.out.println(message.getText());
+					System.out.println(message.getSequenceNumber());
+					uncommittedEntries.put(message.getSequenceNumber(), message);
+					Message acknowledgeMessage = new Message();
+					acknowledgeMessage.setHeader("acknowledgeEntry");
+					acknowledgeMessage.setSequenceNumber(message.getSequenceNumber());
+					try {
+						synchronized (out) {
+							out.writeObject(acknowledgeMessage);
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				} else if (message.getHeader().equals("commitEntry")) {
+					messageText = uncommittedEntries.get(message.getSequenceNumber()).getText();
+					System.out.println(messageText + " committed");
+					messageList.add(messageText);
+					writeToFile(messageText);
+					uncommittedEntries.remove(message.getSequenceNumber());
 				} else if (message.getHeader().equals("heartbeat")) {
 
 				} else if (message.getHeader().equals("voteRequestHandlerAddress")) {

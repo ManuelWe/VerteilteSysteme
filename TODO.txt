@@ -12,3 +12,5 @@ create server.txt when not available
 
 cyclic barrier for messageSenderThreads in server?
 
+kill during election????
+

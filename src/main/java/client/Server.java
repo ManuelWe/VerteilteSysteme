@@ -7,9 +7,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.AbstractMap;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Vector;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,11 +24,13 @@ public class Server {
 	private AtomicInteger connections = new AtomicInteger(0);
 	private Vector<ObjectOutputStream> outputStreams = new Vector<ObjectOutputStream>();
 	private BlockingQueue<Message> messageList = new LinkedBlockingQueue<Message>();
-	private Vector<Message> dataList = new Vector<Message>();
+	private Vector<Message> entriesList = new Vector<Message>();
 	private CopyOnWriteArrayList<String> voteRequestHandlerAddresses = new CopyOnWriteArrayList<String>();
 	private String serverAddress = "";
 	private boolean serverRunning = true;
 	private AtomicBoolean messageSent = new AtomicBoolean(false);
+	private Map<Integer, Entry<Message, Integer>> uncommittedEntries = new ConcurrentHashMap<Integer, Entry<Message, Integer>>();
+	private AtomicInteger sequenceNumber = new AtomicInteger(0);
 
 	public Server(WebClient webClient) {
 		try {
@@ -97,21 +103,50 @@ public class Server {
 
 		public void run() {
 			int clientID = connections.getAndIncrement();
+			int acknowledgesNeeded = 0;
+			Message message = null;
 
 			System.out.println("Client " + clientID + " is now connected to the socket");
-			Message message = null;
+
 			do {
 				try {
 					message = (Message) in.readObject();
-					if (message.getHeader().equals("data")) {
-						System.out.println("Client " + clientID + ": \"" + message.getText() + "\"");
-						if (!message.getText().equals("Over")) {
+					if (message.getHeader().equals("appendEntry")) {
+						synchronized (message) {
+							message.setSequenceNumber(sequenceNumber.getAndIncrement());
 							try {
 								messageList.put(message);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
-							dataList.add(message);
+						}
+						acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
+						uncommittedEntries.put(message.getSequenceNumber(),
+								new AbstractMap.SimpleEntry<Message, Integer>(message, acknowledgesNeeded));
+					} else if (message.getHeader().equals("acknowledgeEntry")) {
+						synchronized (uncommittedEntries) {
+							if (uncommittedEntries.containsKey(message.getSequenceNumber())) {
+								uncommittedEntries.compute(message.getSequenceNumber(), (key, val) -> {
+									val.setValue(val.getValue() - 1);
+									return val;
+								});
+								if (uncommittedEntries.get(message.getSequenceNumber()).getValue() == 0) {
+									System.out.println("Client " + clientID + ": \""
+											+ uncommittedEntries.get(message.getSequenceNumber()).getKey().getText()
+											+ "\"");
+									Message commitMessage = new Message();
+									commitMessage.setHeader("commitEntry");
+									commitMessage.setSequenceNumber(message.getSequenceNumber());
+									try {
+										messageList.put(commitMessage);
+									} catch (InterruptedException e) {
+										e.printStackTrace();
+									}
+									entriesList.add(message);
+									uncommittedEntries.remove(message.getSequenceNumber());
+									System.out.println(uncommittedEntries.size() + "left");
+								}
+							}
 						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
@@ -124,13 +159,12 @@ public class Server {
 					} else {
 						System.err.println("Message with wrong header received!");
 					}
-					System.out.println(voteRequestHandlerAddresses);
 				} catch (IOException i) {
 					break;
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				}
-			} while (serverRunning && !message.getText().equals("Over"));
+			} while (serverRunning);
 			System.out.println("Closing connection with Client " + clientID);
 
 			closeConnection();
@@ -266,8 +300,8 @@ public class Server {
 		return serverAddress;
 	}
 
-	public Vector<Message> getDataList() {
-		return dataList;
+	public Vector<Message> getEntriesList() {
+		return entriesList;
 	}
 
 	// ############################## Testing Methods #########################
