@@ -5,6 +5,7 @@ package test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,7 @@ public class ElectionTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 20;
+	final int amountClients = 6;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -37,6 +38,14 @@ public class ElectionTests {
 		if (!setupDone) {
 			// new Thread(new dhcpThread()).start();
 			setupDone = true;
+		}
+
+		try {
+			for (File file : new File("OutputFiles").listFiles())
+				if (!file.isDirectory())
+					file.delete();
+		} catch (NullPointerException e) {
+
 		}
 
 		webClient = new WebClient("127.0.0.1");
@@ -109,7 +118,7 @@ public class ElectionTests {
 				e1.printStackTrace();
 			}
 			Message message = new Message();
-			message.setText("Test" + clients.get(i));
+			message.setText("Test " + i + " " + clients.get(i));
 			message.setHeader("appendEntry");
 			try {
 				clients.get(i).getOutputStream().writeObject(message);
@@ -118,12 +127,16 @@ public class ElectionTests {
 			}
 		}
 		try {
-			Thread.sleep(200);
+			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 
 		assertEquals(amountClients, server.getEntriesList().size());
+
+		for (int i = 0; i < clients.size(); i++) {
+			assertEquals("" + i, amountClients, clients.get(i).getMessageList().size());
+		}
 	}
 
 	@Test

@@ -112,7 +112,7 @@ public class VoteRequestHandler {
 
 				voted.set(false);
 			} else if (message.getHeader().equals("electionCanceled")) {
-
+				System.out.println("Election canceled");
 			} else {
 				System.err.println("Unexpected header in election!");
 				System.err.println(message.getHeader());

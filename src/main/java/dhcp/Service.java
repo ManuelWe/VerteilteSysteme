@@ -16,7 +16,7 @@ public class Service {
 	@Produces(MediaType.TEXT_PLAIN)
 	public String helloHTML() {
 		fileHandler = new FileHandler();
-		return fileHandler.getLastFileEntry();
+		return fileHandler.getFileEntry();
 	}
 
 	@POST

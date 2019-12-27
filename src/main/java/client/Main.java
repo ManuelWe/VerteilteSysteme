@@ -52,8 +52,9 @@ public class Main {
 			String serverAddress = null;
 			try {
 				serverAddress = webClient.getServerAddress();
+				System.out.println(serverAddress);
 			} catch (Exception c) {
-				System.out.println("DHCP nicht erreichbar!");
+				System.out.println("DHCP nicht erreichbar! Bitte als cli argument angeben!");
 				System.exit(0);
 			}
 
@@ -68,8 +69,7 @@ public class Main {
 			}
 		} else {
 			System.out.println("******************************************************");
-			System.out.println("You are to stupid to type a correct letter, please\n"
-					+ "disconnect your head from your body and let your body\n" + "search a new brain");
+			System.out.println("Please enter a valid letter!");
 			System.out.println("******************************************************");
 		}
 		scanner.close();
