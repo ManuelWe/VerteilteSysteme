@@ -8,8 +8,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -19,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
@@ -29,7 +28,6 @@ public class Client {
 	private ObjectOutputStream out = null;
 	private WebClient webClient = null;
 	private String serverAddress = null;
-	private List<String> messageList = new ArrayList<String>();
 	private int heartbeatCounter = 3;
 	private int currentElectionTerm = 0;
 	private AtomicBoolean election = new AtomicBoolean(false);
@@ -46,6 +44,9 @@ public class Client {
 	private String electedServerAddress = null;
 	private Object electionLock = new Object();
 	private Map<Integer, Message> uncommittedEntries = new HashMap<Integer, Message>();
+	private Vector<Message> committedEntries = new Vector<Message>();
+	private int nextClientID = 1;
+	private int clientID = 0;
 
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
@@ -57,7 +58,6 @@ public class Client {
 
 		String address = serverAddress.split(":")[0];
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
-		System.out.println(serverAddress);
 		try {
 			socket = new Socket(address, port);
 			socket.setSoTimeout(10000);
@@ -75,6 +75,14 @@ public class Client {
 			new Thread(new electionHandlerThread()).start();
 
 			Message message = new Message();
+			message.setHeader("clientID");
+			message.setSequenceNumber(clientID);
+			try {
+				out.writeObject(message);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			message = new Message();
 			message.setHeader("voteRequestHandlerAddress");
 			message.setText(voteRequestHandlerAddress);
 			try {
@@ -101,9 +109,9 @@ public class Client {
 				message.setText(scanner.nextLine());
 				message.setHeader("appendEntry");
 				String a[] = { "a", "b", "c", "d" };
-				for (int i = 0; i < 2; i++) {
+				for (int i = 0; i < 4; i++) {
 					synchronized (out) {
-						message.setText(a[i]);
+						message.setText(a[i] + " " + new Timestamp(new Date().getTime()) + " " + socket.getLocalPort());
 						out.writeObject(message);
 					}
 					out.reset();
@@ -147,7 +155,7 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		server = new Server(webClient);
+		server = new Server(webClient, clientID, nextClientID);
 		serverAddress = server.getServerAddress();
 		clientRunning = false;
 	}
@@ -176,6 +184,16 @@ public class Client {
 			e.printStackTrace();
 		}
 		Message message = new Message();
+		message.setHeader("clientID");
+		message.setSequenceNumber(clientID);
+		try {
+			synchronized (out) {
+				out.writeObject(message);
+			}
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		message = new Message();
 		message.setHeader("voteRequestHandlerAddress");
 		message.setText(voteRequestHandlerAddress);
 		try {
@@ -236,8 +254,6 @@ public class Client {
 
 				heartbeatCounter = 3;
 				if (message.getHeader().equals("appendEntry")) {
-					System.out.println(message.getText());
-					System.out.println(message.getSequenceNumber());
 					uncommittedEntries.put(message.getSequenceNumber(), message);
 					Message acknowledgeMessage = new Message();
 					acknowledgeMessage.setHeader("acknowledgeEntry");
@@ -252,22 +268,35 @@ public class Client {
 				} else if (message.getHeader().equals("commitEntry")) {
 					messageText = uncommittedEntries.get(message.getSequenceNumber()).getText();
 					System.out.println(messageText + " committed");
-					messageList.add(messageText);
 					writeToFile(messageText);
+					committedEntries.add(message);
 					uncommittedEntries.remove(message.getSequenceNumber());
+				} else if (message.getHeader().equals("committedEntries")) {
+					committedEntries.addAll(message.getMessageList());
+					System.out.println("Added " + message.getMessageList().size() + " messages to log!");
+					for (Message newMessage : message.getMessageList()) {
+						writeToFile(newMessage.getText());
+					}
 				} else if (message.getHeader().equals("heartbeat")) {
 
+				} else if (message.getHeader().equals("clientID")) {
+					clientID = message.getSequenceNumber();
 				} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
+					nextClientID = message.getSequenceNumber();
 					if (!message.getText().equals(voteRequestHandlerAddress)) { // don't add own address
 						voteRequestHandlerAddresses.add(message.getText());
 					}
 				} else if (message.getHeader().equals("voteRequestHandlerAddresses")) {
-					voteRequestHandlerAddresses = message.getList();
+					nextClientID = message.getSequenceNumber();
+					voteRequestHandlerAddresses = message.getStringList();
 					voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
 					System.out.println(voteRequestHandlerAddresses);
 				} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
 					voteRequestHandlerAddresses.remove(message.getText());
 					System.out.println(voteRequestHandlerAddresses);
+				} else if (message.getHeader().equals("connectToNewServer")) {
+					serverAddress = message.getText();
+					connectToNewServer();
 				} else {
 					System.err.println("Unknown header received!");
 					System.err.println(message.getHeader());
@@ -278,7 +307,7 @@ public class Client {
 
 	private void writeToFile(String messageText) {
 		File dir = new File("OutputFiles");
-		File file = new File("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
+		File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
 		try {
 			dir.mkdir();
 			file.createNewFile();
@@ -287,13 +316,12 @@ public class Client {
 		}
 
 		List<String> lines = Arrays.asList(messageText);
-		Path filePath = Paths.get("OutputFiles/OutputFile" + socket.getLocalPort() + ".txt");
 
 		try {
-			Files.write(filePath, lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+			Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
 		} catch (IOException e) {
 			try {
-				Files.write(filePath, lines, StandardCharsets.UTF_8);
+				Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
@@ -463,10 +491,10 @@ public class Client {
 				System.err.println(message.getHeader());
 			}
 
-			int electionResponseTimeout = 40;
+			int electionResponseTimeout = 25;
 			while (votes < (voteRequestHandlerAddresses.size() + 1) / 2 && electionResponseTimeout > 0) {
 				try {
-					Thread.sleep(100);
+					Thread.sleep(200);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -511,6 +539,9 @@ public class Client {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+				synchronized (electionLock) {
+					electionLock.notify();
+				}
 			}
 		}
 	}
@@ -532,10 +563,6 @@ public class Client {
 	public String getServerAddress() {
 		return serverAddress;
 	}
-	
-	public String getPort() {
-		return "" + socket.getLocalPort();
-	}
 
 	public void stopClient() {
 		clientRunning = false;
@@ -544,5 +571,13 @@ public class Client {
 
 	public Server getServerInstance() {
 		return server;
+	}
+
+	public Vector<Message> getMessageList() {
+		return committedEntries;
+	}
+
+	public int getID() {
+		return clientID;
 	}
 }

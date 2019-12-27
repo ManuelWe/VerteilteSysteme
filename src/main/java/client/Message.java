@@ -1,17 +1,16 @@
 package client;
 
 import java.io.Serializable;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Vector;
 
 public class Message implements Serializable {
 	private static final long serialVersionUID = 4618450393393898072L;
 	private String header = null;
 	private String text = null;
-	private AtomicInteger sequenceNumber = new AtomicInteger(0);
+	private int sequenceNumber = 0;
 	private int electionTerm = 0;
-	private CopyOnWriteArrayList<String> list = new CopyOnWriteArrayList<String>();
+	private Vector<String> stringList = new Vector<String>();
+	private Vector<Message> messageList = new Vector<Message>();
 
 	public String getHeader() {
 		return header;
@@ -21,11 +20,11 @@ public class Message implements Serializable {
 		this.header = header;
 	}
 
-	public synchronized String getText() {
+	public String getText() {
 		return text;
 	}
 
-	public synchronized void setText(String text) {
+	public void setText(String text) {
 		this.text = text;
 	}
 
@@ -37,23 +36,35 @@ public class Message implements Serializable {
 		return electionTerm;
 	}
 
-	public void setList(CopyOnWriteArrayList<String> list) {
-		synchronized (list) {
-			this.list = list;
+	public void setStringList(Vector<String> list) {
+		synchronized (stringList) {
+			this.stringList = list;
 		}
 	}
 
-	public List<String> getList() {
-		synchronized (list) {
-			return list;
+	public Vector<String> getStringList() {
+		synchronized (stringList) {
+			return stringList;
 		}
 	}
 
 	public void setSequenceNumber(int sequenceNumber) {
-		this.sequenceNumber.set(sequenceNumber);
+		this.sequenceNumber = sequenceNumber;
 	}
 
 	public int getSequenceNumber() {
-		return sequenceNumber.get();
+		return sequenceNumber;
+	}
+
+	public void setMessageList(Vector<Message> list) {
+		synchronized (messageList) {
+			this.messageList = list;
+		}
+	}
+
+	public Vector<Message> getMessageList() {
+		synchronized (messageList) {
+			return messageList;
+		}
 	}
 }
