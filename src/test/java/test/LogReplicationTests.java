@@ -26,7 +26,7 @@ public class LogReplicationTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 6;
+	final int amountClients = 50;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();

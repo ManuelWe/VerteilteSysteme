@@ -15,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import client.Client;
-import client.Message;
 import client.Server;
 import client.WebClient;
 import dhcp.DhcpServer;
@@ -25,7 +24,7 @@ public class ElectionTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 6;
+	final int amountClients = 50;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -103,40 +102,24 @@ public class ElectionTests {
 	}
 
 	@Test
-	public void dhcpWorking() {
-		webClient.setServerAddress("127.0.0.1:23452");
-		assertEquals(webClient.getServerAddress(), "127.0.0.1:23452");
-	}
-
-	@Test
-	public void sendMessagesToServer() {
-		for (int i = 0; i < clients.size(); i++) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			Message message = new Message();
-			message.setText("Test " + i + " " + clients.get(i));
-			message.setHeader("appendEntry");
-			try {
-				clients.get(i).getOutputStream().writeObject(message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+	public void a() {
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(4000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-
-		assertEquals(amountClients, server.getEntriesList().size());
-
-		for (int i = 0; i < clients.size(); i++) {
-			assertEquals("" + i, amountClients, clients.get(i).getMessageList().size());
+		server.send();
+		try {
+			Thread.sleep(6000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
+	}
+
+	@Test
+	public void dhcpWorking() {
+		webClient.setServerAddress("127.0.0.1:23452");
+		assertEquals(webClient.getServerAddress(), "127.0.0.1:23452");
 	}
 
 	@Test

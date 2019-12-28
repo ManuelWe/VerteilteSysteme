@@ -123,6 +123,7 @@ public class Client {
 					}
 				}
 			} catch (IOException c) {
+				c.printStackTrace();
 				election.set(true);
 				synchronized (electionLock) {
 					electionLock.notify();
@@ -171,6 +172,7 @@ public class Client {
 			socket = new Socket(serverAddress.split(":")[0], Integer.parseInt(serverAddress.split(":")[1]));
 			socket.setSoTimeout(10000);
 		} catch (Exception e) {
+			e.printStackTrace();
 			election.set(true);
 			synchronized (electionLock) {
 				electionLock.notify();
@@ -244,6 +246,7 @@ public class Client {
 						}
 					}
 				} catch (IOException e) {
+					e.printStackTrace();
 					election.set(true);
 					synchronized (electionLock) {
 						electionLock.notify();
@@ -252,7 +255,7 @@ public class Client {
 					e.printStackTrace();
 				}
 
-				heartbeatCounter = 3;
+				heartbeatCounter = 4;
 				if (message.getHeader().equals("appendEntry")) {
 					uncommittedEntries.put(message.getSequenceNumber(), message);
 					Message acknowledgeMessage = new Message();

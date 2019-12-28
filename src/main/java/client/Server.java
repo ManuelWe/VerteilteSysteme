@@ -348,16 +348,12 @@ public class Server {
 	private class benchmarkingThread implements Runnable {
 		public void run() {
 			while (serverRunning) {
-				if (messageList.size() > 15) {
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+				if (messageList.size() > 40) {
+					System.out.println(System.currentTimeMillis());
+					while (messageList.size() > 0) {
+
 					}
-					if (messageList.size() > 15) {
-						System.err.println("Too many messages in queue " + messageList.size());
-						System.exit(0);
-					}
+					System.out.println(System.currentTimeMillis());
 				}
 			}
 		}
@@ -370,6 +366,14 @@ public class Server {
 
 	public Vector<Message> getEntriesList() {
 		return committedEntries;
+	}
+
+	public void send() {
+		Message message1 = new Message();
+		message1.setHeader("heartbeat");
+		for (int i = 0; i < 50; i++) {
+			messageList.add(message1);
+		}
 	}
 
 	// ############################## Testing Methods #########################
