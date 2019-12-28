@@ -161,9 +161,10 @@ public class Server {
 									return val;
 								});
 								if (uncommittedEntries.get(message.getSequenceNumber()).getValue() == 0) {
-									System.out.println("Client " + clientID + ": \""
-											+ uncommittedEntries.get(message.getSequenceNumber()).getKey().getText()
-											+ "\"");
+									String messageText = uncommittedEntries.get(message.getSequenceNumber()).getKey()
+											.getText();
+									System.out.println(
+											"Client " + messageText.split("ID:")[1] + ": \"" + messageText + "\"");
 									Message commitMessage = new Message();
 									commitMessage.setHeader("commitEntry");
 									commitMessage.setSequenceNumber(message.getSequenceNumber());
@@ -187,7 +188,9 @@ public class Server {
 						message = new Message();
 						message.setHeader("clientID");
 						message.setSequenceNumber(clientID);
-						out.writeObject(message);
+						synchronized (outputStreams) {
+							out.writeObject(message);
+						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
 						voteRequestHandlerAddress = message.getText();
@@ -240,32 +243,6 @@ public class Server {
 			}
 		}
 	}
-
-//	public class messageSenderThread implements Runnable {
-//		ObjectOutputStream out = null;
-//		int counter = 0;
-//
-//		public messageSenderThread(ObjectOutputStream out, int counter) {
-//			this.out = out;
-//			this.counter = counter;
-//		}
-//
-//		public void run() {
-//			boolean socketOpen = true;
-//
-//			while (serverRunning && socketOpen) {
-//				if (counter != messageList.size()) {
-//					try {
-//						out.writeObject(messageList.get(counter));
-//					} catch (IOException e) {
-//						socketOpen = false;
-//						// TODO handle
-//					}
-//					counter++;
-//				}
-//			}
-//		}
-//	}
 
 	// sends incoming messages to all clients
 	public class messageSenderThread implements Runnable {
@@ -348,13 +325,16 @@ public class Server {
 	private class benchmarkingThread implements Runnable {
 		public void run() {
 			while (serverRunning) {
-				if (messageList.size() > 40) {
-					System.out.println(System.currentTimeMillis());
-					while (messageList.size() > 0) {
-
-					}
-					System.out.println(System.currentTimeMillis());
-				}
+//				if (messageList.size() > 40) {
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//					System.err.println(messageList.size());
+//					System.exit(0);
+//				}
 			}
 		}
 	}
@@ -364,17 +344,13 @@ public class Server {
 		return serverAddress;
 	}
 
-	public Vector<Message> getEntriesList() {
-		return committedEntries;
-	}
-
-	public void send() {
-		Message message1 = new Message();
-		message1.setHeader("heartbeat");
-		for (int i = 0; i < 50; i++) {
-			messageList.add(message1);
-		}
-	}
+//	public void send() {
+//		Message message1 = new Message();
+//		message1.setHeader("heartbeat");
+//		for (int i = 0; i < 50; i++) {
+//			messageList.add(message1);
+//		}
+//	}
 
 	// ############################## Testing Methods #########################
 
@@ -386,5 +362,9 @@ public class Server {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public Vector<Message> getCommittedEntries() {
+		return committedEntries;
 	}
 }
