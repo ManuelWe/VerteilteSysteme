@@ -1,3 +1,9 @@
+/.gradle/
+/bin/
+/build/
 out
 OutputFile.txt
 .idea
+META-INF
+server.txt
+OutputFiles
