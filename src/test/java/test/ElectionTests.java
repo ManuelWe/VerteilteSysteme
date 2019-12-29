@@ -132,6 +132,7 @@ public class ElectionTests {
 				newServerAddress = clients.get(i).getServerAddress();
 				server = clients.get(i).getServerInstance();
 				clients.remove(i);
+				break;
 			}
 		}
 
