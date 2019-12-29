@@ -15,7 +15,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import client.Client;
-import client.Message;
 import client.Server;
 import client.WebClient;
 import dhcp.DhcpServer;
@@ -25,7 +24,7 @@ public class ElectionTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 6;
+	final int amountClients = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -109,42 +108,11 @@ public class ElectionTests {
 	}
 
 	@Test
-	public void sendMessagesToServer() {
-		for (int i = 0; i < clients.size(); i++) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			Message message = new Message();
-			message.setText("Test " + i + " " + clients.get(i));
-			message.setHeader("appendEntry");
-			try {
-				clients.get(i).getOutputStream().writeObject(message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		try {
-			Thread.sleep(2000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-
-		assertEquals(amountClients, server.getEntriesList().size());
-
-		for (int i = 0; i < clients.size(); i++) {
-			assertEquals("" + i, amountClients, clients.get(i).getMessageList().size());
-		}
-	}
-
-	@Test
 	public void serverFails() {
 		String newServerAddress = "";
 
 		try {
-			Thread.sleep(15000);
+			Thread.sleep(5000);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -152,7 +120,7 @@ public class ElectionTests {
 		server.closeServer();
 
 		try {
-			Thread.sleep(30000);
+			Thread.sleep(10000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -176,41 +144,6 @@ public class ElectionTests {
 			}
 		}
 		assertEquals("Only " + count + " clients connected to same server", amountClients - 1, count);
-//
-//		try {
-//			Thread.sleep(1000);
-//		} catch (InterruptedException e1) {
-//			e1.printStackTrace();
-//		}
-//
-//		server.closeServer();
-//
-//		try {
-//			Thread.sleep(15000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//
-//		// remove new server from clients list
-//		for (int i = 0; i < clients.size(); i++) {
-//			if (clients.get(i).getClientRunning() == false) {
-//				newServerAddress = clients.get(i).getServerAddress();
-//				server = clients.get(i).getServerInstance();
-//				clients.remove(i);
-//			}
-//		}
-//
-//		assertEquals(amountClients - 2, clients.size());
-//
-//		int count1 = 0;
-//		for (int i = 0; i < clients.size(); i++) {
-//			if (clients.get(i).getServerAddress().equals(newServerAddress)) {
-//				count1++;
-//			}
-//		}
-//
-//		assertEquals("Only " + count1 + " clients connected to same server", amountClients - 2, count1);
 	}
 
 	@After

@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -60,7 +61,7 @@ public class Client {
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
 		try {
 			socket = new Socket(address, port);
-			socket.setSoTimeout(10000);
+			socket.setSoTimeout(15000);
 
 			try {
 				scanner = new Scanner(System.in);
@@ -109,9 +110,9 @@ public class Client {
 				message.setText(scanner.nextLine());
 				message.setHeader("appendEntry");
 				String a[] = { "a", "b", "c", "d" };
-				for (int i = 0; i < 4; i++) {
+				for (int i = 0; i < 1; i++) {
 					synchronized (out) {
-						message.setText(a[i] + " " + new Timestamp(new Date().getTime()) + " " + socket.getLocalPort());
+						message.setText(a[i] + " " + ZonedDateTime.now() + " ID:" + clientID);
 						out.writeObject(message);
 					}
 					out.reset();
@@ -123,6 +124,7 @@ public class Client {
 					}
 				}
 			} catch (IOException c) {
+				c.printStackTrace();
 				election.set(true);
 				synchronized (electionLock) {
 					electionLock.notify();
@@ -155,7 +157,7 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		server = new Server(webClient, clientID, nextClientID);
+		server = new Server(webClient, clientID, nextClientID, uncommittedEntries);
 		serverAddress = server.getServerAddress();
 		clientRunning = false;
 	}
@@ -166,11 +168,13 @@ public class Client {
 		closeConnection();
 		currentElectionTerm = voteRequestHandler.getElectionTerm();
 		System.out.println("New election term:" + currentElectionTerm);
+		uncommittedEntries.clear();
 
 		try {
 			socket = new Socket(serverAddress.split(":")[0], Integer.parseInt(serverAddress.split(":")[1]));
-			socket.setSoTimeout(10000);
+			socket.setSoTimeout(3000);
 		} catch (Exception e) {
+			e.printStackTrace();
 			election.set(true);
 			synchronized (electionLock) {
 				electionLock.notify();
@@ -223,7 +227,7 @@ public class Client {
 					}
 				}
 				try {
-					Thread.sleep(200);
+					Thread.sleep(30); // TODO needed?
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
@@ -244,62 +248,67 @@ public class Client {
 						}
 					}
 				} catch (IOException e) {
-					election.set(true);
-					synchronized (electionLock) {
-						electionLock.notify();
+					if (clientRunning) {
+						e.printStackTrace();
+						election.set(true);
+						synchronized (electionLock) {
+							electionLock.notify();
+						}
 					}
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				}
 
-				heartbeatCounter = 3;
-				if (message.getHeader().equals("appendEntry")) {
-					uncommittedEntries.put(message.getSequenceNumber(), message);
-					Message acknowledgeMessage = new Message();
-					acknowledgeMessage.setHeader("acknowledgeEntry");
-					acknowledgeMessage.setSequenceNumber(message.getSequenceNumber());
-					try {
-						synchronized (out) {
-							out.writeObject(acknowledgeMessage);
+				if (clientRunning) {
+					heartbeatCounter = 4;
+					if (message.getHeader().equals("appendEntry")) {
+						uncommittedEntries.put(message.getSequenceNumber(), message);
+						Message acknowledgeMessage = new Message();
+						acknowledgeMessage.setHeader("acknowledgeEntry");
+						acknowledgeMessage.setSequenceNumber(message.getSequenceNumber());
+						try {
+							synchronized (out) {
+								out.writeObject(acknowledgeMessage);
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
 						}
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				} else if (message.getHeader().equals("commitEntry")) {
-					messageText = uncommittedEntries.get(message.getSequenceNumber()).getText();
-					System.out.println(messageText + " committed");
-					writeToFile(messageText);
-					committedEntries.add(message);
-					uncommittedEntries.remove(message.getSequenceNumber());
-				} else if (message.getHeader().equals("committedEntries")) {
-					committedEntries.addAll(message.getMessageList());
-					System.out.println("Added " + message.getMessageList().size() + " messages to log!");
-					for (Message newMessage : message.getMessageList()) {
-						writeToFile(newMessage.getText());
-					}
-				} else if (message.getHeader().equals("heartbeat")) {
+					} else if (message.getHeader().equals("commitEntry")) {
+						messageText = uncommittedEntries.get(message.getSequenceNumber()).getText();
+						System.out.println(clientID + ": " + messageText + " committed");
+						writeToFile(messageText);
+						committedEntries.add(message);
+						uncommittedEntries.remove(message.getSequenceNumber());
+					} else if (message.getHeader().equals("committedEntries")) {
+						committedEntries.addAll(message.getMessageList());
+						if (message.getMessageList().size() > 0) {
+							System.out.println("Added " + message.getMessageList().size() + " messages to log!");
+						}
+						for (Message newMessage : message.getMessageList()) {
+							writeToFile(newMessage.getText());
+						}
+					} else if (message.getHeader().equals("heartbeat")) {
 
-				} else if (message.getHeader().equals("clientID")) {
-					clientID = message.getSequenceNumber();
-				} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
-					nextClientID = message.getSequenceNumber();
-					if (!message.getText().equals(voteRequestHandlerAddress)) { // don't add own address
-						voteRequestHandlerAddresses.add(message.getText());
+					} else if (message.getHeader().equals("clientID")) {
+						clientID = message.getSequenceNumber();
+					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
+						nextClientID = message.getSequenceNumber();
+						if (!message.getText().equals(voteRequestHandlerAddress)) { // don't add own address
+							voteRequestHandlerAddresses.add(message.getText());
+						}
+					} else if (message.getHeader().equals("voteRequestHandlerAddresses")) {
+						nextClientID = message.getSequenceNumber();
+						voteRequestHandlerAddresses = message.getStringList();
+						voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
+					} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
+						voteRequestHandlerAddresses.remove(message.getText());
+					} else if (message.getHeader().equals("connectToNewServer")) {
+						serverAddress = message.getText();
+						connectToNewServer();
+					} else {
+						System.err.println("Unknown header received!");
+						System.err.println(message.getHeader());
 					}
-				} else if (message.getHeader().equals("voteRequestHandlerAddresses")) {
-					nextClientID = message.getSequenceNumber();
-					voteRequestHandlerAddresses = message.getStringList();
-					voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
-					System.out.println(voteRequestHandlerAddresses);
-				} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
-					voteRequestHandlerAddresses.remove(message.getText());
-					System.out.println(voteRequestHandlerAddresses);
-				} else if (message.getHeader().equals("connectToNewServer")) {
-					serverAddress = message.getText();
-					connectToNewServer();
-				} else {
-					System.err.println("Unknown header received!");
-					System.err.println(message.getHeader());
 				}
 			}
 		}
@@ -456,7 +465,7 @@ public class Client {
 			int port = Integer.parseInt(voteRequestHandlerAddress.split(":")[1]);
 			try {
 				socket = new Socket(address, port);
-				socket.setSoTimeout(10000);
+				socket.setSoTimeout(15000);
 			} catch (IOException u) {
 				u.printStackTrace();
 			}
@@ -573,7 +582,7 @@ public class Client {
 		return server;
 	}
 
-	public Vector<Message> getMessageList() {
+	public Vector<Message> getCommittedEntries() {
 		return committedEntries;
 	}
 

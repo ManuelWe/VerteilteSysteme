@@ -26,7 +26,7 @@ public class LogReplicationTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 6;
+	final int amountClients = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -68,10 +68,43 @@ public class LogReplicationTests {
 	}
 
 	@Test
+	public void sendOneMessage() {
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		Message message = new Message();
+		message.setText("Test " + clients.get(0) + " ID:" + clients.get(0).getID());
+		message.setHeader("appendEntry");
+		long startTime = System.currentTimeMillis();
+		try {
+			clients.get(0).getOutputStream().writeObject(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		while (clients.get(0).getCommittedEntries().size() == 0) {
+
+		}
+		System.err.println(System.currentTimeMillis() - startTime + "end time");
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	@Test
 	public void sendMessagesToServer() {
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
 		for (int i = 0; i < clients.size(); i++) {
 			Message message = new Message();
-			message.setText("Test " + clients.get(i));
+			message.setText("Test " + clients.get(i) + " ID:" + clients.get(i).getID());
 			message.setHeader("appendEntry");
 			try {
 				clients.get(i).getOutputStream().writeObject(message);
@@ -80,15 +113,15 @@ public class LogReplicationTests {
 			}
 		}
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(20000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 
-		assertEquals(amountClients, server.getEntriesList().size());
+		assertEquals(amountClients, server.getCommittedEntries().size());
 
 		for (int i = 0; i < clients.size(); i++) {
-			assertEquals("" + i, amountClients, clients.get(i).getMessageList().size());
+			assertEquals("" + i, amountClients, clients.get(i).getCommittedEntries().size());
 		}
 	}
 
@@ -111,6 +144,7 @@ public class LogReplicationTests {
 
 	@After
 	public void teardown() {
+		server.closeServer();
 		for (Client client : clients) {
 			client.stopClient();
 		}

@@ -3,7 +3,12 @@ specify size of array on initialization?
 handle socket timeouts
 
 
-cyclic barrier for messageSenderThreads in server?
-
 kill during election????
 
+load file??
+
+resend uncommitted entries (message in committed or uncommitted -> approve)
+
+check on client if message is next sequence number or if messages are missing
+
+client needs to check if he commits following sequence number; if he already has that sequence number committed -> replace existing

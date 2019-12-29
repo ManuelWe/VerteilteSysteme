@@ -31,6 +31,7 @@ public class FileComparator {
 	@Test
 	public void filesEqual() {
 		boolean output = true;
+		System.out.println(files.size());
 		for (int i = 0; i < files.size(); i++) {
 			if (!(isEqual(files.get(0).toPath(), files.get(i).toPath()))) {
 				fail(files.get(0).getName() + " " + files.get(i).getName());

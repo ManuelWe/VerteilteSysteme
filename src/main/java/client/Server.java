@@ -61,9 +61,10 @@ public class Server {
 		System.out.println("Log files: ");
 
 		new Thread(new serverThread()).start();
+
 	}
 
-	public Server(WebClient webClient, int clientID, int nextID) {
+	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries) {
 		this(webClient);
 		this.nextClientID.set(nextID);
 
@@ -78,13 +79,14 @@ public class Server {
 					message.setText(sc.nextLine());
 					committedEntries.add(message);
 				}
+				sequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
 				file.delete();
 				sc.close();
 			} catch (FileNotFoundException e) {
 				// If no messages were written, do nothing
 			}
-
 		}
+		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
 	}
 
 	private class serverThread implements Runnable {
@@ -120,7 +122,6 @@ public class Server {
 				e.printStackTrace();
 			}
 
-			// new Thread(new messageSenderThread(out, messageList.size())).start();
 			Message message = new Message();
 			message.setHeader("voteRequestHandlerAddresses");
 			message.setStringList(voteRequestHandlerAddresses);
@@ -143,8 +144,8 @@ public class Server {
 				try {
 					message = (Message) in.readObject();
 					if (message.getHeader().equals("appendEntry")) {
-						message.setSequenceNumber(sequenceNumber.getAndIncrement());
-						message.setText(sequenceNumber.get() + " " + message.getText());
+						message.setSequenceNumber(sequenceNumber.get());
+						message.setText(sequenceNumber.getAndIncrement() + " " + message.getText());
 						try {
 							messageList.put(message);
 						} catch (InterruptedException e) {
@@ -161,9 +162,10 @@ public class Server {
 									return val;
 								});
 								if (uncommittedEntries.get(message.getSequenceNumber()).getValue() == 0) {
-									System.out.println("Client " + clientID + ": \""
-											+ uncommittedEntries.get(message.getSequenceNumber()).getKey().getText()
-											+ "\"");
+									String messageText = uncommittedEntries.get(message.getSequenceNumber()).getKey()
+											.getText();
+									System.out.println(
+											"Client " + messageText.split("ID:")[1] + ": \"" + messageText + "\"");
 									Message commitMessage = new Message();
 									commitMessage.setHeader("commitEntry");
 									commitMessage.setSequenceNumber(message.getSequenceNumber());
@@ -187,7 +189,9 @@ public class Server {
 						message = new Message();
 						message.setHeader("clientID");
 						message.setSequenceNumber(clientID);
-						out.writeObject(message);
+						synchronized (outputStreams) {
+							out.writeObject(message);
+						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
 						voteRequestHandlerAddress = message.getText();
@@ -240,32 +244,6 @@ public class Server {
 			}
 		}
 	}
-
-//	public class messageSenderThread implements Runnable {
-//		ObjectOutputStream out = null;
-//		int counter = 0;
-//
-//		public messageSenderThread(ObjectOutputStream out, int counter) {
-//			this.out = out;
-//			this.counter = counter;
-//		}
-//
-//		public void run() {
-//			boolean socketOpen = true;
-//
-//			while (serverRunning && socketOpen) {
-//				if (counter != messageList.size()) {
-//					try {
-//						out.writeObject(messageList.get(counter));
-//					} catch (IOException e) {
-//						socketOpen = false;
-//						// TODO handle
-//					}
-//					counter++;
-//				}
-//			}
-//		}
-//	}
 
 	// sends incoming messages to all clients
 	public class messageSenderThread implements Runnable {
@@ -344,33 +322,62 @@ public class Server {
 		}
 	}
 
+	private class uncommittedMessagesThread implements Runnable {
+		Map<Integer, Message> oldUncommittedEntries = null;
+
+		private uncommittedMessagesThread(Map<Integer, Message> uncommittedEntries) {
+			oldUncommittedEntries = uncommittedEntries;
+		}
+
+		public void run() {
+			try {
+				Thread.sleep(1000); // wait until most of clients are connected
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			int acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
+			for (Map.Entry<Integer, Message> mapEntry : oldUncommittedEntries.entrySet()) {
+				System.out.println("Resent");
+				try {
+					messageList.put(mapEntry.getValue());
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				uncommittedEntries.put(mapEntry.getKey(),
+						new AbstractMap.SimpleEntry<Message, Integer>(mapEntry.getValue(), acknowledgesNeeded));
+			}
+		}
+	}
+
 	// TODO remove
 	private class benchmarkingThread implements Runnable {
 		public void run() {
 			while (serverRunning) {
-				if (messageList.size() > 15) {
-					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					if (messageList.size() > 15) {
-						System.err.println("Too many messages in queue " + messageList.size());
-						System.exit(0);
-					}
-				}
+//				if (messageList.size() > 40) {
+//					try {
+//						Thread.sleep(1000);
+//					} catch (InterruptedException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+//					System.err.println(messageList.size());
+//					System.exit(0);
+//				}
 			}
 		}
 	}
 
 	public String getServerAddress() {
-		System.out.println(serverAddress);
 		return serverAddress;
 	}
 
-	public Vector<Message> getEntriesList() {
-		return committedEntries;
-	}
+//	public void send() {
+//		Message message1 = new Message();
+//		message1.setHeader("heartbeat");
+//		for (int i = 0; i < 50; i++) {
+//			messageList.add(message1);
+//		}
+//	}
 
 	// ############################## Testing Methods #########################
 
@@ -382,5 +389,9 @@ public class Server {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public Vector<Message> getCommittedEntries() {
+		return committedEntries;
 	}
 }
