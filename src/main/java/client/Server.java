@@ -61,9 +61,10 @@ public class Server {
 		System.out.println("Log files: ");
 
 		new Thread(new serverThread()).start();
+
 	}
 
-	public Server(WebClient webClient, int clientID, int nextID) {
+	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries) {
 		this(webClient);
 		this.nextClientID.set(nextID);
 
@@ -78,13 +79,14 @@ public class Server {
 					message.setText(sc.nextLine());
 					committedEntries.add(message);
 				}
+				sequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
 				file.delete();
 				sc.close();
 			} catch (FileNotFoundException e) {
 				// If no messages were written, do nothing
 			}
-
 		}
+		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
 	}
 
 	private class serverThread implements Runnable {
@@ -120,7 +122,6 @@ public class Server {
 				e.printStackTrace();
 			}
 
-			// new Thread(new messageSenderThread(out, messageList.size())).start();
 			Message message = new Message();
 			message.setHeader("voteRequestHandlerAddresses");
 			message.setStringList(voteRequestHandlerAddresses);
@@ -143,8 +144,8 @@ public class Server {
 				try {
 					message = (Message) in.readObject();
 					if (message.getHeader().equals("appendEntry")) {
-						message.setSequenceNumber(sequenceNumber.getAndIncrement());
-						message.setText(sequenceNumber.get() + " " + message.getText());
+						message.setSequenceNumber(sequenceNumber.get());
+						message.setText(sequenceNumber.getAndIncrement() + " " + message.getText());
 						try {
 							messageList.put(message);
 						} catch (InterruptedException e) {
@@ -321,6 +322,33 @@ public class Server {
 		}
 	}
 
+	private class uncommittedMessagesThread implements Runnable {
+		Map<Integer, Message> oldUncommittedEntries = null;
+
+		private uncommittedMessagesThread(Map<Integer, Message> uncommittedEntries) {
+			oldUncommittedEntries = uncommittedEntries;
+		}
+
+		public void run() {
+			try {
+				Thread.sleep(1000); // wait until most of clients are connected
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			int acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
+			for (Map.Entry<Integer, Message> mapEntry : oldUncommittedEntries.entrySet()) {
+				System.out.println("Resent");
+				try {
+					messageList.put(mapEntry.getValue());
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				uncommittedEntries.put(mapEntry.getKey(),
+						new AbstractMap.SimpleEntry<Message, Integer>(mapEntry.getValue(), acknowledgesNeeded));
+			}
+		}
+	}
+
 	// TODO remove
 	private class benchmarkingThread implements Runnable {
 		public void run() {
@@ -340,7 +368,6 @@ public class Server {
 	}
 
 	public String getServerAddress() {
-		System.out.println(serverAddress);
 		return serverAddress;
 	}
 

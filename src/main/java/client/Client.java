@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -111,7 +112,7 @@ public class Client {
 				String a[] = { "a", "b", "c", "d" };
 				for (int i = 0; i < 1; i++) {
 					synchronized (out) {
-						message.setText(a[i] + " " + new Timestamp(new Date().getTime()) + " ID:" + clientID);
+						message.setText(a[i] + " " + ZonedDateTime.now() + " ID:" + clientID);
 						out.writeObject(message);
 					}
 					out.reset();
@@ -156,7 +157,7 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		server = new Server(webClient, clientID, nextClientID);
+		server = new Server(webClient, clientID, nextClientID, uncommittedEntries);
 		serverAddress = server.getServerAddress();
 		clientRunning = false;
 	}
@@ -167,6 +168,7 @@ public class Client {
 		closeConnection();
 		currentElectionTerm = voteRequestHandler.getElectionTerm();
 		System.out.println("New election term:" + currentElectionTerm);
+		uncommittedEntries.clear();
 
 		try {
 			socket = new Socket(serverAddress.split(":")[0], Integer.parseInt(serverAddress.split(":")[1]));

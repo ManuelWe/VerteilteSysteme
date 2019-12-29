@@ -78,7 +78,6 @@ public class LogReplicationTests {
 		message.setText("Test " + clients.get(0) + " ID:" + clients.get(0).getID());
 		message.setHeader("appendEntry");
 		long startTime = System.currentTimeMillis();
-		System.err.println(startTime);
 		try {
 			clients.get(0).getOutputStream().writeObject(message);
 		} catch (IOException e) {
@@ -145,6 +144,7 @@ public class LogReplicationTests {
 
 	@After
 	public void teardown() {
+		server.closeServer();
 		for (Client client : clients) {
 			client.stopClient();
 		}
