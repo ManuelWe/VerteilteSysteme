@@ -38,12 +38,13 @@ public class VoteRequestHandler {
 	}
 
 	private class voteRequestHandlerThread implements Runnable {
+		@Override
 		public void run() {
 			Socket clientSocket = null;
 			while (true) {
 				try {
 					clientSocket = server.accept();
-					clientSocket.setSoTimeout(20000);
+					clientSocket.setSoTimeout(15000);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -72,6 +73,7 @@ public class VoteRequestHandler {
 			}
 		}
 
+		@Override
 		public void run() {
 			Message message = null;
 
@@ -109,7 +111,6 @@ public class VoteRequestHandler {
 			if (message.getHeader().equals("newLeader")) {
 				System.err.println("Got leader address");
 				client.setElectedServer(message.getText());
-
 				voted.set(false);
 			} else if (message.getHeader().equals("electionCanceled")) {
 				System.out.println("Election canceled");

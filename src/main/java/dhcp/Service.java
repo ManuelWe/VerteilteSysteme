@@ -7,16 +7,18 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import com.sun.jersey.spi.resource.Singleton;
+
 @Path("dhcp")
+@Singleton
 public class Service {
-	FileHandler fileHandler;
+	String serverAddress = "0";
 
 	@GET
 	@Path("server")
 	@Produces(MediaType.TEXT_PLAIN)
 	public String helloHTML() {
-		fileHandler = new FileHandler();
-		return fileHandler.getFileEntry();
+		return serverAddress;
 	}
 
 	@POST
@@ -24,8 +26,7 @@ public class Service {
 	@Consumes(MediaType.TEXT_PLAIN)
 	@Produces(MediaType.TEXT_PLAIN)
 	public String helloWorldJSON(String serverAddress) {
-		fileHandler = new FileHandler();
-		fileHandler.setServerAddress(serverAddress);
+		this.serverAddress = serverAddress;
 		return ("OK");
 	}
 }

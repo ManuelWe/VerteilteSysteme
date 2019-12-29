@@ -9,8 +9,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Scanner;
@@ -31,9 +36,8 @@ public class Server {
 	private boolean serverRunning = true;
 	private AtomicBoolean messageSent = new AtomicBoolean(false);
 	private Map<Integer, Entry<Message, Integer>> uncommittedEntries = new ConcurrentHashMap<Integer, Entry<Message, Integer>>();
-	private Vector<Message> committedEntries = new Vector<Message>(); // only String if we dont request particular
-																		// messages
-	private AtomicInteger sequenceNumber = new AtomicInteger(0);
+	private Vector<Message> committedEntries = new Vector<Message>();
+	private AtomicInteger nextSequenceNumber = new AtomicInteger(0);
 
 	public Server(WebClient webClient) {
 		try {
@@ -64,9 +68,11 @@ public class Server {
 
 	}
 
-	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries) {
+	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries,
+			int nextSequenceNumber) {
 		this(webClient);
 		this.nextClientID.set(nextID);
+		this.nextSequenceNumber.set(nextSequenceNumber);
 
 		if (clientID > 0) {
 			File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
@@ -79,7 +85,9 @@ public class Server {
 					message.setText(sc.nextLine());
 					committedEntries.add(message);
 				}
-				sequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
+				if (message.getText() != null) {
+					this.nextSequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
+				}
 				file.delete();
 				sc.close();
 			} catch (FileNotFoundException e) {
@@ -89,9 +97,34 @@ public class Server {
 		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
 	}
 
+	// TODO remove
+	private void writeToFile(String messageText) {
+		File dir = new File("OutputFiles");
+		File file = new File("OutputFiles/OutputFileSERVER.txt");
+		try {
+			dir.mkdir();
+			file.createNewFile();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		List<String> lines = Arrays.asList(messageText);
+
+		try {
+			Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			try {
+				Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+
 	private class serverThread implements Runnable {
 		Socket clientSocket = null;
 
+		@Override
 		public void run() {
 			while (serverRunning) {
 				try {
@@ -127,33 +160,33 @@ public class Server {
 			message.setStringList(voteRequestHandlerAddresses);
 			message.setSequenceNumber(nextClientID.get());
 			out.writeObject(message);
-			message = new Message();
-			message.setHeader("committedEntries");
-			message.setMessageList(committedEntries);
-			out.writeObject(message);
 
 			outputStreams.add(out);
 		}
 
+		@Override
 		public void run() {
 			int acknowledgesNeeded = 0;
 			Message message = null;
+			Message responseMessage = null;
 			int clientID = 0;
 
 			do {
 				try {
 					message = (Message) in.readObject();
 					if (message.getHeader().equals("appendEntry")) {
-						message.setSequenceNumber(sequenceNumber.get());
-						message.setText(sequenceNumber.getAndIncrement() + " " + message.getText());
-						try {
-							messageList.put(message);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+						synchronized (uncommittedEntries) {
+							message.setSequenceNumber(nextSequenceNumber.get());
+							message.setText(nextSequenceNumber.getAndIncrement() + " " + message.getText());
+							try {
+								messageList.put(message);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+							acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
+							uncommittedEntries.put(message.getSequenceNumber(),
+									new AbstractMap.SimpleEntry<Message, Integer>(message, acknowledgesNeeded));
 						}
-						acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
-						uncommittedEntries.put(message.getSequenceNumber(),
-								new AbstractMap.SimpleEntry<Message, Integer>(message, acknowledgesNeeded));
 					} else if (message.getHeader().equals("acknowledgeEntry")) {
 						synchronized (uncommittedEntries) {
 							if (uncommittedEntries.containsKey(message.getSequenceNumber())) {
@@ -166,18 +199,32 @@ public class Server {
 											.getText();
 									System.out.println(
 											"Client " + messageText.split("ID:")[1] + ": \"" + messageText + "\"");
-									Message commitMessage = new Message();
-									commitMessage.setHeader("commitEntry");
-									commitMessage.setSequenceNumber(message.getSequenceNumber());
+									responseMessage = new Message();
+									responseMessage.setHeader("commitEntry");
+									responseMessage.setSequenceNumber(message.getSequenceNumber());
 									try {
-										messageList.put(commitMessage);
+										messageList.put(responseMessage);
 									} catch (InterruptedException e) {
 										e.printStackTrace();
 									}
-									committedEntries.add(uncommittedEntries.get(message.getSequenceNumber()).getKey());
-									uncommittedEntries.remove(message.getSequenceNumber());
+
+									for (int i = committedEntries.size(); i <= message.getSequenceNumber(); i++) {
+										if (uncommittedEntries.containsKey(i)) {
+											writeToFile(uncommittedEntries.get(i).getKey().getText());
+											committedEntries.add(uncommittedEntries.get(i).getKey());
+											uncommittedEntries.remove(i);
+										}
+									}
 								}
 							}
+						}
+					} else if (message.getHeader().equals("requestEntry")) {
+						responseMessage = new Message();
+						responseMessage.setHeader("requestedEntry");
+						responseMessage.setText(committedEntries.get(message.getSequenceNumber()).getText());
+						responseMessage.setSequenceNumber(message.getSequenceNumber());
+						synchronized (outputStreams) {
+							out.writeObject(responseMessage);
 						}
 					} else if (message.getHeader().equals("clientID")) {
 						if (message.getSequenceNumber() == 0) {
@@ -189,6 +236,12 @@ public class Server {
 						message = new Message();
 						message.setHeader("clientID");
 						message.setSequenceNumber(clientID);
+						synchronized (outputStreams) {
+							out.writeObject(message);
+						}
+						message = new Message();
+						message.setHeader("committedEntries");
+						message.setMessageList(committedEntries);
 						synchronized (outputStreams) {
 							out.writeObject(message);
 						}
@@ -248,6 +301,7 @@ public class Server {
 	// sends incoming messages to all clients
 	public class messageSenderThread implements Runnable {
 
+		@Override
 		public void run() {
 			Message message = null;
 			Iterator<ObjectOutputStream> it = null;
@@ -280,11 +334,14 @@ public class Server {
 		Message message = new Message();
 		WebClient webClient = null;
 		int counter = 0;
+		String addressOnDHCP = "";
+		boolean dhcpAvailable = true;
 
 		private heartbeatThread(WebClient webClient) {
 			this.webClient = webClient;
 		}
 
+		@Override
 		public void run() {
 			message.setHeader("heartbeat");
 			while (serverRunning) {
@@ -301,19 +358,36 @@ public class Server {
 						e.printStackTrace();
 					}
 				}
-				if (counter > 10) {
-					String addressOnDHCP = webClient.getServerAddress();
-					if (!addressOnDHCP.equals(serverAddress)) {
-						Message newMessage = new Message();
-						newMessage.setHeader("connectToNewServer");
-						newMessage.setText(addressOnDHCP);
+				if (counter > 5) {
+					if (dhcpAvailable) {
 						try {
-							messageList.put(newMessage);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+							addressOnDHCP = webClient.getServerAddress();
+						} catch (Exception e) {
+							dhcpAvailable = false;
+							System.out.println("DHCP unreachable. The current network is not affected!");
 						}
-						// TODO new Client(addressOnDHCP, webClient, false);
-						closeServer();
+						if (!addressOnDHCP.equals(serverAddress) && dhcpAvailable) {
+							Message newMessage = new Message();
+							newMessage.setHeader("connectToNewServer");
+							newMessage.setText(addressOnDHCP);
+							try {
+								messageList.put(newMessage);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+							// TODO new Client(addressOnDHCP, webClient, false);
+							closeServer();
+						}
+					} else {
+						dhcpAvailable = true;
+						System.out.println("DHCP unreachable. Trying to reconnect!");
+						try {
+							webClient.setServerAddress(serverAddress);
+						} catch (Exception e) {
+							dhcpAvailable = false;
+						}
+						if (dhcpAvailable)
+							System.out.println("DHCP is reachable again!");
 					}
 					counter = 0;
 				}
@@ -329,6 +403,7 @@ public class Server {
 			oldUncommittedEntries = uncommittedEntries;
 		}
 
+		@Override
 		public void run() {
 			try {
 				Thread.sleep(1000); // wait until most of clients are connected
@@ -337,32 +412,33 @@ public class Server {
 			}
 			int acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
 			for (Map.Entry<Integer, Message> mapEntry : oldUncommittedEntries.entrySet()) {
-				System.out.println("Resent");
-				try {
-					messageList.put(mapEntry.getValue());
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+				if (outputStreams.size() == 0) {
+					// TODO commit message
+				} else {
+					try {
+						messageList.put(mapEntry.getValue());
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					uncommittedEntries.put(mapEntry.getKey(),
+							new AbstractMap.SimpleEntry<Message, Integer>(mapEntry.getValue(), acknowledgesNeeded));
 				}
-				uncommittedEntries.put(mapEntry.getKey(),
-						new AbstractMap.SimpleEntry<Message, Integer>(mapEntry.getValue(), acknowledgesNeeded));
 			}
 		}
 	}
 
 	// TODO remove
 	private class benchmarkingThread implements Runnable {
+		@Override
 		public void run() {
 			while (serverRunning) {
-//				if (messageList.size() > 40) {
-//					try {
-//						Thread.sleep(1000);
-//					} catch (InterruptedException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}
-//					System.err.println(messageList.size());
-//					System.exit(0);
+//				try {
+//					Thread.sleep(200);
+//				} catch (InterruptedException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
 //				}
+//				System.err.println(messageList.size());
 			}
 		}
 	}
@@ -393,5 +469,13 @@ public class Server {
 
 	public Vector<Message> getCommittedEntries() {
 		return committedEntries;
+	}
+
+	public void setCommittedEntries(int key, Message message) {
+		committedEntries.add(key, message);
+	}
+
+	public void sendMessage(Message message) {
+		messageList.add(message);
 	}
 }
