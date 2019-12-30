@@ -11,7 +11,7 @@ import java.util.Scanner;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AllEntries {
+public class CorrectSequenceNumberOrder {
 	List<File> files = new ArrayList<File>();
 	Scanner sc = null;
 

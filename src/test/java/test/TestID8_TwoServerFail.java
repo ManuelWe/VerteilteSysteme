@@ -17,7 +17,7 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
-public class TwoServerFail {
+public class TestID8_TwoServerFail {
 
 	final int amountClients = 100;
 
@@ -129,7 +129,6 @@ public class TwoServerFail {
 				newServerAddress = clients.get(i).getServerAddress();
 				server = clients.get(i).getServerInstance();
 				clients.remove(i);
-				break;
 			}
 		}
 

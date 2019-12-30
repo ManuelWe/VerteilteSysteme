@@ -3,16 +3,19 @@ package client;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VoteRequestHandler {
 	private ServerSocket server = null;
-	private String voteRequestHandlerAddress = "";
-	private int currentElectionTerm = 0;
+	private volatile String voteRequestHandlerAddress = "";
+	private volatile int currentElectionTerm = 0;
 	private AtomicBoolean voted = new AtomicBoolean(false);
 	private Client client = null;
 
@@ -24,15 +27,17 @@ public class VoteRequestHandler {
 			e.printStackTrace();
 		}
 
-		String localAddress = "";
-		try {
-			localAddress = InetAddress.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e1) {
-			e1.printStackTrace();
+		String localAddress = null;
+		try (final DatagramSocket socket = new DatagramSocket()) {
+			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+			localAddress = socket.getLocalAddress().getHostAddress();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
 		}
 		// voteRequestHandlerAddress = localAddress + ":" + server.getLocalPort();
 		voteRequestHandlerAddress = "127.0.0.1" + ":" + server.getLocalPort();
-		System.out.println(voteRequestHandlerAddress);
 
 		new Thread(new voteRequestHandlerThread()).start();
 	}
@@ -41,10 +46,16 @@ public class VoteRequestHandler {
 		@Override
 		public void run() {
 			Socket clientSocket = null;
-			while (true) {
+			while (client.getClientRunning()) {
 				try {
 					clientSocket = server.accept();
 					clientSocket.setSoTimeout(15000);
+				} catch (SocketException e) {
+					if (client.getClientRunning()) {
+						e.printStackTrace();
+					} else {
+						break;
+					}
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -83,9 +94,13 @@ public class VoteRequestHandler {
 				e.printStackTrace();
 			}
 
-			if (!voted.get() && message.getElectionTerm() > currentElectionTerm) {
-				voted.set(true);
+			if (message.getElectionTerm() > currentElectionTerm) {
+				voted.set(false);
 				currentElectionTerm = message.getElectionTerm();
+			}
+
+			if (!voted.get()) {
+				voted.set(true);
 				System.out.println("VOTED FOR " + clientSocket + "VOTEDVOTEDVOTED " + currentElectionTerm);
 				message = new Message();
 				message.setHeader("electionResponse");
@@ -104,16 +119,18 @@ public class VoteRequestHandler {
 
 			try {
 				message = (Message) in.readObject();
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			} catch (SocketTimeoutException e) {
+				System.err.println("TIMEOUT ON requesthandler 种种种种种种种种种种种种种种种种种种种种");
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
 			if (message.getHeader().equals("newLeader")) {
 				System.err.println("Got leader address");
 				client.setElectedServer(message.getText());
-				voted.set(false);
 			} else if (message.getHeader().equals("electionCanceled")) {
-				System.out.println("Election canceled");
 			} else {
 				System.err.println("Unexpected header in election!");
 				System.err.println(message.getHeader());
@@ -151,5 +168,13 @@ public class VoteRequestHandler {
 
 	public String getAddress() {
 		return voteRequestHandlerAddress;
+	}
+
+	public void close() {
+		try {
+			server.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

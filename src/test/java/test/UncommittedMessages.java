@@ -1,6 +1,7 @@
 package test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -44,7 +45,8 @@ public class UncommittedMessages {
 		}
 
 		uncommittedMessage.setHeader("appendEntry");
-		uncommittedMessage.setText("UncommitedMessage " + " ID:" + "0");
+		uncommittedMessage.setText("0 UncommitedMessage " + " ID:" + "0");
+		uncommittedMessage.setSequenceNumber(0);
 		for (int i = 0; i < amountClients; i++) {
 			clients.get(i).setUncommittedEntries(0, uncommittedMessage);
 		}
@@ -53,7 +55,7 @@ public class UncommittedMessages {
 	@Test
 	public void serverFails() {
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(9000);
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
@@ -62,7 +64,7 @@ public class UncommittedMessages {
 
 		try {
 			System.err.println("System sleeping");
-			Thread.sleep(60000);
+			Thread.sleep(20000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -73,6 +75,20 @@ public class UncommittedMessages {
 			}
 		}
 
+		assertEquals(amountClients - 1, clients.size());
+
+		Message message = new Message();
+		message.setHeader("requestedEntry");
+		message.setText("1 babababab");
+		message.setSequenceNumber(1);
+		server.sendMessage(message);
+
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		boolean messageCommitted = true;
 		for (int i = 0; i < clients.size(); i++) {
 
@@ -81,7 +97,10 @@ public class UncommittedMessages {
 			} else {
 				messageCommitted = false;
 				break;
+			}
 
+			if (!(clients.get(i).getCommittedEntries().size() == 2)) {
+				fail("client " + i + " has more than one message committed");
 			}
 		}
 		assertEquals(true, messageCommitted);

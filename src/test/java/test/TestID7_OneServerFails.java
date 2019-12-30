@@ -17,7 +17,7 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
-public class OneServerFails {
+public class TestID7_OneServerFails {
 
 	final int amountClients = 100;
 

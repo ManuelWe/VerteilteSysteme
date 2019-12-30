@@ -5,9 +5,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -46,15 +48,18 @@ public class Server {
 			i.printStackTrace();
 		}
 
-		String localAddress = "";
-		try {
-			localAddress = InetAddress.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e1) {
-			e1.printStackTrace();
+		String localAddress = null;
+		try (final DatagramSocket socket = new DatagramSocket()) {
+			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+			localAddress = socket.getLocalAddress().getHostAddress();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
 		}
 		// serverAddress = localAddress + ":" + server.getLocalPort();
 		serverAddress = "127.0.0.1" + ":" + server.getLocalPort();
-		System.out.println(serverAddress);
+
 		webClient.setServerAddress(serverAddress);
 
 		new Thread(new messageSenderThread()).start();
@@ -96,7 +101,6 @@ public class Server {
 		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
 	}
 
-	// TODO remove
 	private void writeToFile(String messageText) {
 		File dir = new File("OutputFiles");
 		File file = new File("OutputFiles/OutputFileSERVER.txt");
@@ -370,7 +374,7 @@ public class Server {
 					}
 
 					if (addressOnDHCP != null) {
-						if (addressOnDHCP.equals("0")) {
+						if (addressOnDHCP.equals("null")) {
 							webClient.setServerAddress(serverAddress);
 							System.out.println("DHCP reachable again!");
 						} else if (!addressOnDHCP.equals(serverAddress)) {

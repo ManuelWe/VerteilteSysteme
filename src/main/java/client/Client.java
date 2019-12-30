@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -29,20 +30,20 @@ public class Client {
 	private ObjectOutputStream out = null;
 	private WebClient webClient = null;
 	private String serverAddress = null;
-	private int heartbeatCounter = 3;
+	private int heartbeatCounter = 4;
 	private int currentElectionTerm = 0;
 	private AtomicBoolean election = new AtomicBoolean(false);
 	private VoteRequestHandler voteRequestHandler = null;
 	private String voteRequestHandlerAddress = "";
 	private List<String> voteRequestHandlerAddresses = new ArrayList<String>();
-	private int votes = 0;
+	private volatile int votes = 0;
 	private AtomicBoolean startNewServer = new AtomicBoolean(false);
 	private boolean closeConnection = false;
-	private boolean clientRunning = true;
+	private volatile boolean clientRunning = true;
 	private boolean connectToNewServer = false;
 	private String tempServerAddress = "";
 	private Server server = null;
-	private String electedServerAddress = null;
+	private volatile String electedServerAddress = null;
 	private Object electionLock = new Object();
 	private Map<Integer, Message> uncommittedEntries = new HashMap<Integer, Message>();
 	private Vector<Message> committedEntries = new Vector<Message>();
@@ -66,7 +67,6 @@ public class Client {
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
 		try {
 			socket = new Socket(address, port);
-			socket.setSoTimeout(15000);
 
 			try {
 				scanner = new Scanner(System.in);
@@ -108,26 +108,31 @@ public class Client {
 
 	private void clientMain() {
 		Message message = null;
+		String input = "";
 		do {
 			System.out.printf("Your input: ");
-			message = new Message();
-			try {
-				message.setText(scanner.nextLine() + " " + ZonedDateTime.now() + " ID:" + clientID);
-				message.setHeader("appendEntry");
-				synchronized (out) {
-					out.writeObject(message);
-				}
-			} catch (IOException c) {
-				c.printStackTrace();
-				election.set(true);
-				synchronized (electionLock) {
-					electionLock.notify();
+			input = scanner.nextLine();
+			if (!input.equals("over")) {
+				message = new Message();
+				try {
+					message.setText(input + " " + ZonedDateTime.now() + " ID:" + clientID);
+					message.setHeader("appendEntry");
+					synchronized (out) {
+						out.writeObject(message);
+					}
+				} catch (IOException c) {
+					c.printStackTrace();
+					election.set(true);
+					synchronized (electionLock) {
+						electionLock.notify();
+					}
 				}
 			}
-		} while (clientRunning);
+		} while (clientRunning && !input.equals("over"));
 		System.out.println("Closing connection to server");
 		scanner.close();
-
+		clientRunning = false;
+		voteRequestHandler.close();
 		closeConnection();
 		System.exit(0);
 	}
@@ -154,6 +159,7 @@ public class Client {
 		server = new Server(webClient, clientID, nextClientID, uncommittedEntries, nextSequenceNumber);
 		serverAddress = server.getServerAddress();
 		clientRunning = false;
+		voteRequestHandler.close();
 	}
 
 	private void connectToNewServer() {
@@ -166,7 +172,6 @@ public class Client {
 
 		try {
 			socket = new Socket(serverAddress.split(":")[0], Integer.parseInt(serverAddress.split(":")[1]));
-			socket.setSoTimeout(3000);
 		} catch (Exception e) {
 			e.printStackTrace();
 			election.set(true);
@@ -240,7 +245,6 @@ public class Client {
 					}
 				} catch (IOException e) {
 					if (clientRunning) {
-						e.printStackTrace();
 						election.set(true);
 						synchronized (electionLock) {
 							electionLock.notify();
@@ -248,6 +252,7 @@ public class Client {
 					}
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
+					System.exit(0);
 				}
 
 				if (clientRunning) {
@@ -483,7 +488,7 @@ public class Client {
 
 				boolean serverStarted = false;
 				startNewServer.set(false);
-				int electionTimeout = 15;
+				int electionTimeout = 20;
 				while (electedServerAddress == null && electionTimeout > 0) {
 					if (startNewServer.get() && !serverStarted) {
 						System.out.println("Start new server 336");
@@ -507,7 +512,7 @@ public class Client {
 					if (clientRunning) {
 						serverAddress = electedServerAddress;
 						electedServerAddress = null;
-						heartbeatCounter = 3;
+						heartbeatCounter = 4;
 						connectToNewServer();
 					}
 					election.set(false);
@@ -558,7 +563,11 @@ public class Client {
 
 			try {
 				message = (Message) in.readObject();
-			} catch (ClassNotFoundException | IOException e) {
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			} catch (SocketTimeoutException e) {
+				System.err.println("TIMEOUT ON CLIENT LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
@@ -612,6 +621,7 @@ public class Client {
 					closeConnection = true;
 				;
 			} else {
+				System.out.println(clientID + " " + votes + " VOTESVOTESVOTESVOTES");
 				message = new Message();
 				message.setHeader("electionCanceled");
 				try {
@@ -683,6 +693,7 @@ public class Client {
 
 	public void stopClient() {
 		clientRunning = false;
+		voteRequestHandler.close();
 		closeConnection();
 	}
 
