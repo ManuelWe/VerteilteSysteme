@@ -58,7 +58,9 @@ public class Client {
 		voteRequestHandler = new VoteRequestHandler(this);
 		voteRequestHandlerAddress = voteRequestHandler.getAddress();
 
-		System.out.println("CLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENT");
+		if (!automatedTest) {
+			System.out.println("CLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENT");
+		}
 
 		String address = serverAddress.split(":")[0];
 		int port = Integer.parseInt(serverAddress.split(":")[1]);
@@ -115,7 +117,6 @@ public class Client {
 				synchronized (out) {
 					out.writeObject(message);
 				}
-				out.reset();
 			} catch (IOException c) {
 				c.printStackTrace();
 				election.set(true);
@@ -639,6 +640,31 @@ public class Client {
 
 	public void setElectedServer(String electedServer) {
 		this.electedServerAddress = electedServer;
+	}
+
+	public void sendMessage(String text) {
+		if (election.get()) {
+			synchronized (election) {
+				try {
+					election.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		Message message = new Message();
+		try {
+			message.setText(text + " " + ZonedDateTime.now() + " ID:" + clientID);
+			message.setHeader("appendEntry");
+			synchronized (out) {
+				out.writeObject(message);
+			}
+		} catch (IOException c) {
+			election.set(true);
+			synchronized (electionLock) {
+				electionLock.notify();
+			}
+		}
 	}
 
 	// ############################## Testing Methods #########################

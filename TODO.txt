@@ -9,3 +9,7 @@ kill during election????
 load file??
 
 arraylist instead of vector
+
+client controlliert schließen
+
+clients über main starten
