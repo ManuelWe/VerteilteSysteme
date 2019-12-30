@@ -100,6 +100,7 @@ public class Client {
 			if (!automatedTest) {
 				clientMain();
 			}
+
 		} catch (IOException u) {
 			startNewServer();
 			System.out.println("Started server from 85");
@@ -112,7 +113,7 @@ public class Client {
 		do {
 			System.out.printf("Your input: ");
 			input = scanner.nextLine();
-			if (!input.equals("over")) {
+			if (!input.equals("over") && !election.get()) {
 				message = new Message();
 				try {
 					message.setText(input + " " + ZonedDateTime.now() + " ID:" + clientID);

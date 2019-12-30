@@ -15,7 +15,7 @@ import client.WebClient;
 
 public class TestID2 {
 
-	final int amountClients = 2;
+	final int amountClients = 1000;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -27,7 +27,7 @@ public class TestID2 {
 	public void setUp() throws Exception {
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
-		server = new Server(webClient);
+		server = new Server(webClient, 0);
 		serverAddress = webClient.getServerAddress();
 	}
 

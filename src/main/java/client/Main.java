@@ -70,7 +70,7 @@ public class Main {
 				System.out.printf("How many?: ");
 				int anzahl = Integer.parseInt(scanner.nextLine());
 				for (int i = 0; i < anzahl; i++) {
-					new Thread(new botClient(serverAddress, webClient)).start();
+
 				}
 			} else {
 				new Client(serverAddress, webClient, false);
