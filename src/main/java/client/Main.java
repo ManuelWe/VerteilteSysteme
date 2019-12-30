@@ -52,11 +52,23 @@ public class Main {
 			String serverAddress = null;
 			try {
 				serverAddress = webClient.getServerAddress();
-				System.out.println(serverAddress);
 			} catch (Exception c) {
 				System.out.println("DHCP nicht erreichbar! Bitte als cli argument angeben!");
 				System.exit(0);
 			}
+			if (serverAddress.equals("0")) {
+				System.out.println("DHCP was offline. Waiting, if server registers in the next 6 seconds!");
+				try {
+					Thread.sleep(6000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				serverAddress = webClient.getServerAddress();
+				if (serverAddress.equals("0")) {
+					serverAddress = "127.0.0.1:2";
+				}
+			}
+			System.out.println(serverAddress);
 
 			if (input.equals("ü")) {
 				System.out.printf("How many?: ");

@@ -48,6 +48,9 @@ public class Client {
 	private Vector<Message> committedEntries = new Vector<Message>();
 	private int nextClientID = 1;
 	private int clientID = 0;
+	private int nextSequenceNumber = 0;
+	private int highestCommittedSequenceNumber = 0;
+	private File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
 
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
@@ -147,7 +150,7 @@ public class Client {
 	}
 
 	private void startNewServer() {
-		server = new Server(webClient, clientID, nextClientID, uncommittedEntries);
+		server = new Server(webClient, clientID, nextClientID, uncommittedEntries, nextSequenceNumber);
 		serverAddress = server.getServerAddress();
 		clientRunning = false;
 	}
@@ -205,6 +208,7 @@ public class Client {
 		@Override
 		public void run() {
 			Message message = null;
+			Message responseMessage = null;
 			String messageText = null;
 
 			while (clientRunning) {
@@ -216,11 +220,6 @@ public class Client {
 							e.printStackTrace();
 						}
 					}
-				}
-				try {
-					Thread.sleep(30); // TODO needed?
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
 				}
 				try {
 					message = (Message) in.readObject();
@@ -253,30 +252,100 @@ public class Client {
 				if (clientRunning) {
 					heartbeatCounter = 4;
 					if (message.getHeader().equals("appendEntry")) {
+						if (message.getSequenceNumber() >= nextSequenceNumber) {
+							nextSequenceNumber = message.getSequenceNumber() + 1;
+						}
 						uncommittedEntries.put(message.getSequenceNumber(), message);
-						Message acknowledgeMessage = new Message();
-						acknowledgeMessage.setHeader("acknowledgeEntry");
-						acknowledgeMessage.setSequenceNumber(message.getSequenceNumber());
+						responseMessage = new Message();
+						responseMessage.setHeader("acknowledgeEntry");
+						responseMessage.setSequenceNumber(message.getSequenceNumber());
 						try {
 							synchronized (out) {
-								out.writeObject(acknowledgeMessage);
+								out.writeObject(responseMessage);
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
 					} else if (message.getHeader().equals("commitEntry")) {
-						messageText = uncommittedEntries.get(message.getSequenceNumber()).getText();
-						System.out.println(clientID + ": " + messageText + " committed");
-						writeToFile(messageText);
-						committedEntries.add(message);
-						uncommittedEntries.remove(message.getSequenceNumber());
+						if (message.getSequenceNumber() > highestCommittedSequenceNumber) {
+							highestCommittedSequenceNumber = message.getSequenceNumber();
+						}
+						if (committedEntries.size() <= message.getSequenceNumber()) {
+							for (int i = committedEntries.size(); i <= message.getSequenceNumber(); i++) {
+								if (uncommittedEntries.containsKey(i)) {
+									if (committedEntries.size() == i) {
+										messageText = uncommittedEntries.get(i).getText();
+										System.out.println(clientID + ": " + messageText + " committed");
+										writeToFile(messageText);
+										committedEntries.add(uncommittedEntries.remove(i));
+									}
+								} else {
+									System.out.println("Message " + i + " requested");
+									responseMessage = new Message();
+									responseMessage.setHeader("requestEntry");
+									responseMessage.setSequenceNumber(i);
+									try {
+										synchronized (out) {
+											out.writeObject(responseMessage);
+										}
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							}
+						} else {
+							// substitute existing message with new one
+							synchronized (file) {
+								List<String> fileContent = null;
+								try {
+									fileContent = new ArrayList<>(
+											Files.readAllLines(file.toPath(), StandardCharsets.UTF_8));
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+
+								for (int i = 0; i < fileContent.size(); i++) {
+									if (Integer.parseInt(fileContent.get(i).split(" ")[0]) == message
+											.getSequenceNumber()) {
+										fileContent.set(i,
+												uncommittedEntries.get(message.getSequenceNumber()).getText());
+										committedEntries.set(i, uncommittedEntries.remove(i));
+										break;
+									}
+								}
+								try {
+									Files.write(file.toPath(), fileContent, StandardCharsets.UTF_8);
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
+							}
+						}
 					} else if (message.getHeader().equals("committedEntries")) {
 						committedEntries.addAll(message.getMessageList());
 						if (message.getMessageList().size() > 0) {
 							System.out.println("Added " + message.getMessageList().size() + " messages to log!");
 						}
+						file.delete();
 						for (Message newMessage : message.getMessageList()) {
 							writeToFile(newMessage.getText());
+						}
+					} else if (message.getHeader().equals("requestedEntry")) {
+						if (committedEntries.size() == message.getSequenceNumber()) {
+							System.out.println(clientID + ": " + message.getText() + " committed");
+							writeToFile(message.getText());
+							committedEntries.add(message);
+							uncommittedEntries.remove(message.getSequenceNumber());
+							for (int i = committedEntries.size(); i <= highestCommittedSequenceNumber
+									&& committedEntries.size() == i; i++) {
+								if (uncommittedEntries.containsKey(i)) {
+									messageText = uncommittedEntries.get(i).getText();
+									System.out.println(clientID + ": " + messageText + " committed");
+									writeToFile(messageText);
+									committedEntries.add(uncommittedEntries.remove(i));
+								}
+							}
+						} else {
+							uncommittedEntries.put(message.getSequenceNumber(), message);
 						}
 					} else if (message.getHeader().equals("heartbeat")) {
 
@@ -306,24 +375,25 @@ public class Client {
 	}
 
 	private void writeToFile(String messageText) {
-		File dir = new File("OutputFiles");
-		File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
-		try {
-			dir.mkdir();
-			file.createNewFile();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		List<String> lines = Arrays.asList(messageText);
-
-		try {
-			Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-		} catch (IOException e) {
+		synchronized (file) {
+			File dir = new File("OutputFiles");
 			try {
-				Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
-			} catch (IOException e1) {
-				e1.printStackTrace();
+				dir.mkdir();
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			List<String> lines = Arrays.asList(messageText);
+
+			try {
+				Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+			} catch (IOException e) {
+				try {
+					Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
 			}
 		}
 	}
@@ -347,7 +417,7 @@ public class Client {
 				if (heartbeatCounter > 0) {
 					heartbeatCounter--;
 				} else {
-					System.out.println("heartbeat stopped");
+					System.out.println(clientID + ": heartbeat stopped");
 					election.set(true);
 					synchronized (electionLock) {
 						electionLock.notify();
@@ -368,28 +438,30 @@ public class Client {
 		@Override
 		public void run() {
 			while (clientRunning) {
-				synchronized (electionLock) {
-					try {
-						electionLock.wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+				if (!election.get()) {
+					synchronized (electionLock) {
+						try {
+							electionLock.wait();
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
 				}
 
-				int electionWait = (int) (Math.random() * ((2000 - 0) + 1)) + 0;
+				int electionWait = (int) (Math.random() * ((1000 - 0) + 1)) + 0;
 				try {
 					Thread.sleep(electionWait);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 
-				if (voteRequestHandler.getElectionTerm() == currentElectionTerm) {
+				if (voteRequestHandler.getElectionTerm() <= currentElectionTerm) {
 					currentElectionTerm++;
 					Timestamp ts = new Timestamp(new Date().getTime());
-					System.out.println("Election for term: " + currentElectionTerm + " " + ts);
+					System.out.println(clientID + ": Election for term: " + currentElectionTerm + " " + ts);
 					voteRequestHandler.setElectionTerm(currentElectionTerm);
 					if (voteRequestHandlerAddresses.size() == 0) {
-						System.out.println("Start server from 322");
+						System.out.println(clientID + ": Start server from 322");
 						startNewServer();
 						scanner.close();
 						closeConnection();
@@ -405,7 +477,7 @@ public class Client {
 
 				boolean serverStarted = false;
 				startNewServer.set(false);
-				int electionTimeout = 20;
+				int electionTimeout = 15;
 				while (electedServerAddress == null && electionTimeout > 0) {
 					if (startNewServer.get() && !serverStarted) {
 						System.out.println("Start new server 336");
@@ -427,7 +499,6 @@ public class Client {
 
 				if (electionTimeout > 0) {
 					if (clientRunning) {
-						System.out.println(voteRequestHandlerAddresses);
 						serverAddress = electedServerAddress;
 						electedServerAddress = null;
 						heartbeatCounter = 3;
@@ -494,8 +565,9 @@ public class Client {
 				System.err.println(message.getHeader());
 			}
 
-			int electionResponseTimeout = 25;
-			while (votes < (voteRequestHandlerAddresses.size() + 1) / 2 && electionResponseTimeout > 0) {
+			int electionResponseTimeout = 20;
+			int votesNeeded = (voteRequestHandlerAddresses.size() + 1) / 2;
+			while (votes < votesNeeded && electionResponseTimeout > 0) {
 				try {
 					Thread.sleep(200);
 				} catch (InterruptedException e) {
@@ -503,7 +575,6 @@ public class Client {
 				}
 				electionResponseTimeout--;
 			}
-			System.out.println("votes" + votes);
 
 			if (electionResponseTimeout > 0) {
 				if (!startNewServer.get()) {
@@ -542,9 +613,21 @@ public class Client {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				synchronized (electionLock) {
-					electionLock.notify();
-				}
+			}
+			try {
+				socket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			try {
+				out.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			try {
+				in.close();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -584,7 +667,14 @@ public class Client {
 		return clientID;
 	}
 
-	public void setUncommittedMessage(int sequenceNumber, Message message) {
-		uncommittedEntries.put(sequenceNumber, message);
+	public void setUncommittedEntries(int key, Message message) {
+		uncommittedEntries.put(key, message);
+	}
+
+	public void startElection() {
+		election.set(true);
+		synchronized (electionLock) {
+			electionLock.notify();
+		}
 	}
 }

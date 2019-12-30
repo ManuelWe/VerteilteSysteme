@@ -26,7 +26,7 @@ public class LogReplicationTests {
 	public static final String ip = "localhost";
 	public static final String port = "5000";
 
-	final int amountClients = 100;
+	final int amountClients = 50;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -55,9 +55,8 @@ public class LogReplicationTests {
 		}
 
 		server = new Server(webClient);
-		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, true));
+			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}
 	}
 
@@ -102,18 +101,26 @@ public class LogReplicationTests {
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
+		Message message = null;
+		long start = System.currentTimeMillis();
 		for (int i = 0; i < clients.size(); i++) {
-			Message message = new Message();
+			message = new Message();
 			message.setText("Test " + clients.get(i) + " ID:" + clients.get(i).getID());
 			message.setHeader("appendEntry");
 			try {
-				clients.get(i).getOutputStream().writeObject(message);
+				synchronized (clients.get(i).getOutputStream()) {
+					clients.get(i).getOutputStream().writeObject(message);
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
+		while (clients.get(0).getCommittedEntries().size() < 50) {
+
+		}
+		System.err.println(System.currentTimeMillis() - start);
 		try {
-			Thread.sleep(20000);
+			Thread.sleep(10000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}

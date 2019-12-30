@@ -48,19 +48,9 @@ public class ElectionTests {
 		}
 
 		webClient = new WebClient("127.0.0.1");
-		serverAddress = null;
-		while (serverAddress == null) {
-			try {
-				serverAddress = webClient.getServerAddress();
-			} catch (Exception c) {
-				Thread.sleep(100);
-			}
-		}
-
 		server = new Server(webClient);
-		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, true));
+			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}
 
 		// TODO remove
@@ -89,6 +79,7 @@ public class ElectionTests {
 	}
 
 	public class dhcpThread implements Runnable {
+		@Override
 		public void run() {
 			try {
 				String a[] = {};
@@ -120,6 +111,51 @@ public class ElectionTests {
 		server.closeServer();
 
 		try {
+			Thread.sleep(20000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		// remove new server from clients list
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getClientRunning() == false) {
+				newServerAddress = clients.get(i).getServerAddress();
+				server = clients.get(i).getServerInstance();
+				clients.remove(i);
+			}
+		}
+
+		assertEquals(amountClients - 1, clients.size());
+
+		int count = 0;
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getServerAddress().equals(newServerAddress)) {
+				count++;
+			}
+		}
+		assertEquals("Only " + count + " clients connected to same server", amountClients - 1, count);
+		try {
+			Thread.sleep(7000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	@Test
+	public void twoServerFail() {
+		serverFails();
+		String newServerAddress = "";
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		server.closeServer();
+
+		try {
 			Thread.sleep(10000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
@@ -133,6 +169,48 @@ public class ElectionTests {
 				server = clients.get(i).getServerInstance();
 				clients.remove(i);
 				break;
+			}
+		}
+
+		assertEquals(amountClients - 2, clients.size());
+
+		int count = 0;
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getServerAddress().equals(newServerAddress)) {
+				count++;
+			}
+		}
+		assertEquals("Only " + count + " clients connected to same server", amountClients - 2, count);
+		while (true)
+			;
+	}
+
+	@Test
+	public void multipleClientsStartElection() {
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		server.closeServer();
+		for (int i = 0; i < 2; i++) {
+			clients.get(i).startElection();
+		}
+
+		try {
+			Thread.sleep(20000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		String newServerAddress = "";
+		// remove new server from clients list
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getClientRunning() == false) {
+				newServerAddress = clients.get(i).getServerAddress();
+				server = clients.get(i).getServerInstance();
+				clients.remove(i);
 			}
 		}
 
