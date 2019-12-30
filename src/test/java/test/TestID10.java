@@ -17,7 +17,7 @@ import test.BasicEnvironmentTest.dhcpThread;
 
 public class TestID10 {
 	List<File> files = new ArrayList<File>();
-
+	public boolean firstDHCPRun = true;
 	final int amountClients = 100; // number of clients for test / at least 8
 
 	Server server = null;
@@ -56,12 +56,15 @@ public class TestID10 {
 		@Override
 		public void run() {
 			dhcpServer.startServer("127.0.0.1", "8080");
-			try {
-				Thread.sleep(10000L);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			if(firstDHCPRun) {
+				try {
+					Thread.sleep(10000L);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				dhcpServer.server.stop(0);
+				firstDHCPRun = false;
 			}
-			dhcpServer.server.stop(0);
 		}
 	}
 	
@@ -77,6 +80,7 @@ public class TestID10 {
 		dhcpServerThread = new Thread(new dhcpThread());
 		dhcpServerThread.start();
 		
+		//DHCP-Server starts, but has not the ServerAddress
 		assertEquals("0", webClient.getServerAddress()); 
 		
 		try {
@@ -85,7 +89,7 @@ public class TestID10 {
 			e.printStackTrace();
 		}
 		
-		//-> Hier schmiert der Test ab System.out.println(webClient.getServerAddress());
-		//assertEquals(server.getServerAddress(), webClient.getServerAddress());
+		//DHCP-Server is started, and has the Serveraddress
+		assertEquals(server.getServerAddress(), webClient.getServerAddress());
 	}
 }
