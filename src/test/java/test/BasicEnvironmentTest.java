@@ -249,7 +249,7 @@ public class BasicEnvironmentTest {
 		
 		/* ****************************
 		 * Killing dhcp server - start*/
-		 dhcpServerThread.interrupt();
+		 dhcpServerThread.stop();
 		/* Killing dhcp server - end
 		 * *************************/
 		
