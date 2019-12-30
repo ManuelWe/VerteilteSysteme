@@ -39,7 +39,6 @@ public class AllEntries {
 					line = sc.nextLine();
 					String[] message = line.split(" ");
 					int messageNumber = Integer.parseInt(message[0]);
-					System.err.println(message[0]);
 					if (messageNumber == fileLine) {
 						fileLine++;
 					} else {

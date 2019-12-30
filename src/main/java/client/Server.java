@@ -400,4 +400,8 @@ public class Server {
 	public Vector<Message> getCommittedEntries() {
 		return committedEntries;
 	}
+
+	public Vector<ObjectOutputStream> getOutputStreams() {
+		return outputStreams;
+	}
 }
