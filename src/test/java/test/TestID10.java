@@ -13,7 +13,6 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 import dhcp.DhcpServer;
-import test.BasicEnvironmentTest.dhcpThread;
 
 public class TestID10 {
 	List<File> files = new ArrayList<File>();
@@ -81,7 +80,7 @@ public class TestID10 {
 		dhcpServerThread.start();
 		
 		//DHCP-Server starts, but has not the ServerAddress
-		assertEquals("0", webClient.getServerAddress()); 
+		assertEquals("null", webClient.getServerAddress()); 
 		
 		try {
 			Thread.sleep(10000L);

@@ -101,7 +101,6 @@ public class VoteRequestHandler {
 
 			if (!voted.get()) {
 				voted.set(true);
-				System.out.println("VOTED FOR " + clientSocket + "VOTEDVOTEDVOTED " + currentElectionTerm);
 				message = new Message();
 				message.setHeader("electionResponse");
 				message.setText("Yes");
@@ -122,13 +121,12 @@ public class VoteRequestHandler {
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			} catch (SocketTimeoutException e) {
-				System.err.println("TIMEOUT ON requesthandler 种种种种种种种种种种种种种种种种种种种种");
+				System.err.println("TIMEOUT ON requesthandler");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
 			if (message.getHeader().equals("newLeader")) {
-				System.err.println("Got leader address");
 				client.setElectedServer(message.getText());
 			} else if (message.getHeader().equals("electionCanceled")) {
 			} else {
