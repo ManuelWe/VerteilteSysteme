@@ -38,16 +38,13 @@ public class Main {
 		}
 
 		System.out.println("******************************************************");
-		System.out.println("\tWelcome to the new Client / Bot Client chooser");
-		System.out.println("******************************************************");
-		System.out.println("Would you like to open a client press c or type client");
-		System.out.println("For demo clients press ü");
+		System.out.println("Would you like to open a client press c");
+		System.out.println("For demo clients press d");
 		System.out.println("******************************************************");
 		System.out.printf("Your input: ");
-		// String input = scanner.nextLine();
-		String input = "c";
+		String input = scanner.nextLine();
 
-		if (input.equals("c") || input.equals("client") || input.equals("ü")) {
+		if (input.equals("c") || input.equals("d")) {
 			WebClient webClient = new WebClient(dhcpIp);
 			String serverAddress = null;
 			try {
@@ -68,9 +65,8 @@ public class Main {
 					serverAddress = "127.0.0.1:2";
 				}
 			}
-			System.out.println(serverAddress);
 
-			if (input.equals("ü")) {
+			if (input.equals("d")) {
 				System.out.printf("How many?: ");
 				int anzahl = Integer.parseInt(scanner.nextLine());
 				for (int i = 0; i < anzahl; i++) {

@@ -338,8 +338,7 @@ public class Server {
 		Message message = new Message();
 		WebClient webClient = null;
 		int counter = 0;
-		String addressOnDHCP = "";
-		boolean dhcpAvailable = true;
+		String addressOnDHCP = null;
 
 		private heartbeatThread(WebClient webClient) {
 			this.webClient = webClient;
@@ -363,14 +362,18 @@ public class Server {
 					}
 				}
 				if (counter > 7) {
-					if (dhcpAvailable) {
-						try {
-							addressOnDHCP = webClient.getServerAddress();
-						} catch (Exception e) {
-							dhcpAvailable = false;
-							System.out.println("DHCP unreachable. The current network is not affected!");
-						}
-						if (!addressOnDHCP.equals(serverAddress) && dhcpAvailable) {
+					try {
+						addressOnDHCP = webClient.getServerAddress();
+					} catch (Exception e) {
+						System.out.println("DHCP unreachable. The current network is not affected!");
+						addressOnDHCP = null;
+					}
+
+					if (addressOnDHCP != null) {
+						if (addressOnDHCP.equals("0")) {
+							webClient.setServerAddress(serverAddress);
+							System.out.println("DHCP reachable again!");
+						} else if (!addressOnDHCP.equals(serverAddress)) {
 							Message newMessage = new Message();
 							newMessage.setHeader("connectToNewServer");
 							newMessage.setText(addressOnDHCP);
@@ -379,21 +382,10 @@ public class Server {
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
-							// TODO new Client(addressOnDHCP, webClient, false);
+
+							System.out.println("Server not leader anymore!");
 							closeServer();
-							System.out.println("hi");
-							System.exit(0);
 						}
-					} else {
-						dhcpAvailable = true;
-						System.out.println("DHCP unreachable. Trying to reconnect!");
-						try {
-							webClient.setServerAddress(serverAddress);
-						} catch (Exception e) {
-							dhcpAvailable = false;
-						}
-						if (dhcpAvailable)
-							System.out.println("DHCP is reachable again!");
 					}
 					counter = 0;
 				}
