@@ -444,7 +444,11 @@ public class Server {
 	public Vector<Message> getCommittedEntries() {
 		return committedEntries;
 	}
-
+  
+	public Vector<ObjectOutputStream> getOutputStreams() {
+		return outputStreams;
+  }
+  
 	public void setCommittedEntries(int key, Message message) {
 		committedEntries.add(key, message);
 	}
