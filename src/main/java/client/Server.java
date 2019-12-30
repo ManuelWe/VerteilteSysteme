@@ -92,6 +92,7 @@ public class Server {
 	private class serverThread implements Runnable {
 		Socket clientSocket = null;
 
+		@Override
 		public void run() {
 			while (serverRunning) {
 				try {
@@ -135,6 +136,7 @@ public class Server {
 			outputStreams.add(out);
 		}
 
+		@Override
 		public void run() {
 			int acknowledgesNeeded = 0;
 			Message message = null;
@@ -248,6 +250,7 @@ public class Server {
 	// sends incoming messages to all clients
 	public class messageSenderThread implements Runnable {
 
+		@Override
 		public void run() {
 			Message message = null;
 			Iterator<ObjectOutputStream> it = null;
@@ -285,6 +288,7 @@ public class Server {
 			this.webClient = webClient;
 		}
 
+		@Override
 		public void run() {
 			message.setHeader("heartbeat");
 			while (serverRunning) {
@@ -329,6 +333,7 @@ public class Server {
 			oldUncommittedEntries = uncommittedEntries;
 		}
 
+		@Override
 		public void run() {
 			try {
 				Thread.sleep(1000); // wait until most of clients are connected
@@ -351,6 +356,7 @@ public class Server {
 
 	// TODO remove
 	private class benchmarkingThread implements Runnable {
+		@Override
 		public void run() {
 			while (serverRunning) {
 //				if (messageList.size() > 40) {

@@ -107,22 +107,12 @@ public class Client {
 			System.out.printf("Your input: ");
 			message = new Message();
 			try {
-				message.setText(scanner.nextLine());
+				message.setText(scanner.nextLine() + " " + ZonedDateTime.now() + " ID:" + clientID);
 				message.setHeader("appendEntry");
-				String a[] = { "a", "b", "c", "d" };
-				for (int i = 0; i < 1; i++) {
-					synchronized (out) {
-						message.setText(a[i] + " " + ZonedDateTime.now() + " ID:" + clientID);
-						out.writeObject(message);
-					}
-					out.reset();
-					try {
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+				synchronized (out) {
+					out.writeObject(message);
 				}
+				out.reset();
 			} catch (IOException c) {
 				c.printStackTrace();
 				election.set(true);
@@ -212,6 +202,7 @@ public class Client {
 
 	// receives messages from server
 	private class messageReceiverThread implements Runnable {
+		@Override
 		public void run() {
 			Message message = null;
 			String messageText = null;
@@ -340,6 +331,7 @@ public class Client {
 	// monitors heartbeat and starts election
 	private class heartbeatMonitorThread implements Runnable {
 
+		@Override
 		public void run() {
 			while (clientRunning) {
 				if (election.get()) {
@@ -373,6 +365,7 @@ public class Client {
 	// handles election
 	private class electionHandlerThread implements Runnable {
 
+		@Override
 		public void run() {
 			while (clientRunning) {
 				synchronized (electionLock) {
@@ -456,6 +449,7 @@ public class Client {
 			this.voteRequestHandlerAddress = voteRequestHandlerAddress;
 		}
 
+		@Override
 		public void run() {
 			ObjectOutputStream out = null;
 			ObjectInputStream in = null;
@@ -588,5 +582,9 @@ public class Client {
 
 	public int getID() {
 		return clientID;
+	}
+
+	public void setUncommittedMessage(int sequenceNumber, Message message) {
+		uncommittedEntries.put(sequenceNumber, message);
 	}
 }
