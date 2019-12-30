@@ -27,6 +27,10 @@ public class Service {
 	@Produces(MediaType.TEXT_PLAIN)
 	public String helloWorldJSON(String serverAddress) {
 		this.serverAddress = serverAddress;
+		System.out.println("******************************************************");
+		System.out.println("Server changed to " + this.serverAddress);
 		return ("OK");
+		
+		
 	}
 }
