@@ -14,7 +14,6 @@ import client.Server;
 import client.WebClient;
 
 public class TestID02_JoinCluster {
-
 	final int amountClients = 500;
 
 	Server server = null;
@@ -27,7 +26,7 @@ public class TestID02_JoinCluster {
 	public void setUp() throws Exception {
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
-		server = new Server(webClient);
+		server = new Server(webClient, 0);
 		serverAddress = webClient.getServerAddress();
 	}
 

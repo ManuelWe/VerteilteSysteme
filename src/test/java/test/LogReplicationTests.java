@@ -55,7 +55,7 @@ public class LogReplicationTests {
 			}
 		}
 
-		server = new Server(webClient);
+		server = new Server(webClient, 0);
 		for (int i = 0; i < amountClients; i++) {
 			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}

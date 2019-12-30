@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -41,7 +42,7 @@ public class Server {
 	private Vector<Message> committedEntries = new Vector<Message>();
 	private AtomicInteger nextSequenceNumber = new AtomicInteger(0);
 
-	public Server(WebClient webClient) {
+	public Server(WebClient webClient, int clientID) {
 		try {
 			server = new ServerSocket(0);
 		} catch (IOException i) {
@@ -62,43 +63,69 @@ public class Server {
 
 		webClient.setServerAddress(serverAddress);
 
+		if (clientID == 0) {
+			List<File> files = new ArrayList<File>();
+			try {
+				for (File file : new File("OutputFiles").listFiles())
+					if (!file.isDirectory())
+						files.add(file);
+			} catch (NullPointerException e) {
+
+			}
+			if (files.size() > 0) {
+				File biggestFile = files.get(0);
+				for (int i = 1; i < files.size(); i++) {
+					if (biggestFile.length() < files.get(i).length()) {
+						biggestFile = files.get(i);
+					}
+				}
+				readFromFile(biggestFile);
+				System.out.println("Messages read from " + biggestFile.getName());
+			}
+		}
+
 		new Thread(new messageSenderThread()).start();
 		new Thread(new heartbeatThread(webClient)).start();
 
-		System.out.println("SERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVER");
-		System.out.println("Log files: ");
+		System.out.println("******************************************************");
+		System.out.println("You are now the server");
+		System.out.println("******************************************************");
+		System.out.println("Server log: ");
 
 		new Thread(new serverThread()).start();
-
 	}
 
 	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries,
 			int nextSequenceNumber) {
-		this(webClient);
+		this(webClient, clientID);
 		this.nextClientID.set(nextID);
 		this.nextSequenceNumber.set(nextSequenceNumber);
 
 		if (clientID > 0) {
 			File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
-			Scanner sc = null;
-			try {
-				sc = new Scanner(file);
-				Message message = null;
-				while (sc.hasNextLine()) {
-					message = new Message();
-					message.setText(sc.nextLine());
-					committedEntries.add(message);
-				}
-				if (message.getText() != null) {
-					this.nextSequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
-				}
-				file.delete();
-				sc.close();
-			} catch (FileNotFoundException e) {
-				// If no messages were written, do nothing
-			}
+			readFromFile(file);
 		}
 		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
+	}
+
+	public void readFromFile(File file) {
+		Scanner sc = null;
+		try {
+			sc = new Scanner(file);
+			Message message = null;
+			while (sc.hasNextLine()) {
+				message = new Message();
+				message.setText(sc.nextLine());
+				committedEntries.add(message);
+			}
+			if (message.getText() != null) {
+				this.nextSequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
+			}
+			file.delete();
+			sc.close();
+		} catch (FileNotFoundException e) {
+			// If no messages were written, do nothing
+		}
 	}
 
 	private void writeToFile(String messageText) {
@@ -386,8 +413,6 @@ public class Server {
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
-
-							System.out.println("Server not leader anymore!");
 							closeServer();
 						}
 					}
@@ -448,11 +473,11 @@ public class Server {
 	public Vector<Message> getCommittedEntries() {
 		return committedEntries;
 	}
-  
+
 	public Vector<ObjectOutputStream> getOutputStreams() {
 		return outputStreams;
-  }
-  
+	}
+
 	public void setCommittedEntries(int key, Message message) {
 		committedEntries.add(key, message);
 	}

@@ -26,7 +26,7 @@ public class TestID09_NewCluster {
 	public void setUp() throws Exception {
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
-		server = new Server(webClient);
+		server = new Server(webClient, 0);
 		serverAddress = webClient.getServerAddress();
 	}
 
