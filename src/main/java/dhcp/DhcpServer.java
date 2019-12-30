@@ -47,8 +47,8 @@ public class DhcpServer {
 		}
 		server.start();
 		System.out.println("started server at IP '" + ip + "' and port '" + port + "'.");
-	}
-
+	}	
+	
 	public void stopServer() {
 		System.out.print("closing server...");
 		server.stop(0);
