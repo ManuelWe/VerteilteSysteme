@@ -1,35 +1,30 @@
 package test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
 
 import client.Client;
 import client.Message;
 import client.Server;
-import client.VoteRequestHandler;
 import client.WebClient;
 
-public class LogReplicationTests {
+public class TestID4_SendXMessages {
 
 	final int amountClients = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
 	WebClient webClient = null;
-	String serverAddress = null;
-	VoteRequestHandler voteRequestHandler = null;
 
 	@Before
 	public void setUp() throws Exception {
@@ -42,15 +37,6 @@ public class LogReplicationTests {
 		}
 
 		webClient = new WebClient("127.0.0.1");
-		serverAddress = null;
-		while (serverAddress == null) {
-			try {
-				serverAddress = webClient.getServerAddress();
-			} catch (Exception c) {
-				Thread.sleep(100);
-			}
-		}
-
 		server = new Server(webClient);
 		for (int i = 0; i < amountClients; i++) {
 			clients.add(new Client(server.getServerAddress(), webClient, true));
@@ -78,12 +64,12 @@ public class LogReplicationTests {
 				e.printStackTrace();
 			}
 		}
-		while (clients.get(0).getCommittedEntries().size() < 50) {
+		while (clients.get(0).getCommittedEntries().size() < amountClients) {
 
 		}
-		System.err.println(System.currentTimeMillis() - start);
+		System.err.println(System.currentTimeMillis() - start + "ms duration");
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(7000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -93,23 +79,16 @@ public class LogReplicationTests {
 		for (int i = 0; i < clients.size(); i++) {
 			assertEquals("" + i, amountClients, clients.get(i).getCommittedEntries().size());
 		}
-	}
 
-	@Test
-	public void filesEqual() {
-		sendMessagesToServer();
-		List<File> files = new ArrayList<File>();
-		for (int i = 0; i < clients.size(); i++) {
-			files.add(new File("OutputFiles/OutputFile" + clients.get(i).getID() + ".txt"));
+		JUnitCore jUnitCore = new JUnitCore();
+		Result result = jUnitCore.run(CorrectSequenceNumberOrder.class);
+		try {
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
-		boolean output = true;
-		for (int i = 0; i < files.size(); i++) {
-			if (!(isEqual(files.get(0).toPath(), files.get(i).toPath()))) {
-				fail(clients.get(0).getID() + " " + clients.get(i).getID());
-				output = false;
-			}
-		}
-		assertEquals(true, output);
+		System.err.printf("Test ran: %s, Failed: %s%n", result.getRunCount(), result.getFailureCount());
+		assertEquals("Sequence numbers are not correct!", 0, result.getFailureCount());
 	}
 
 	@After
@@ -120,18 +99,4 @@ public class LogReplicationTests {
 		}
 	}
 
-	private boolean isEqual(Path firstFile, Path secondFile) {
-		try {
-			if (Files.size(firstFile) != Files.size(secondFile)) {
-				return false;
-			}
-
-			byte[] first = Files.readAllBytes(firstFile);
-			byte[] second = Files.readAllBytes(secondFile);
-			return Arrays.equals(first, second);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return false;
-	}
 }

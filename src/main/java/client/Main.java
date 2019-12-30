@@ -53,7 +53,7 @@ public class Main {
 				System.out.println("DHCP nicht erreichbar! Bitte als cli argument angeben!");
 				System.exit(0);
 			}
-			if (serverAddress.equals("0")) {
+			if (serverAddress.equals("null")) {
 				System.out.println("DHCP was offline. Waiting, if server registers in the next 8 seconds!");
 				try {
 					Thread.sleep(8000);
@@ -61,7 +61,7 @@ public class Main {
 					e.printStackTrace();
 				}
 				serverAddress = webClient.getServerAddress();
-				if (serverAddress.equals("0")) {
+				if (serverAddress.equals("null")) {
 					serverAddress = "127.0.0.1:2";
 				}
 			}

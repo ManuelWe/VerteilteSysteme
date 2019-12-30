@@ -25,7 +25,6 @@ public class MessageCommitTests {
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
 	WebClient webClient = null;
-	static Boolean setupDone = false;
 
 	@Before
 	public void setUp() throws Exception {
@@ -95,42 +94,6 @@ public class MessageCommitTests {
 			e.printStackTrace();
 		}
 		assertEquals(5, clients.get(0).getCommittedEntries().size());
-	}
-
-	@Test
-	public void missingMessagesGetRequested() {
-		try {
-			Thread.sleep(2000);
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-
-		for (int i = 0; i < 5; i++) {
-			Message message = new Message();
-			message.setHeader("appendEntry");
-			message.setText(i + " blabla" + i);
-			message.setSequenceNumber(i);
-			server.setCommittedEntries(i, message);
-		}
-
-		Message message = new Message();
-		message.setHeader("appendEntry");
-		message.setText("blabla2");
-		message.setSequenceNumber(2);
-		clients.get(0).setUncommittedEntries(2, message);
-
-		message = new Message();
-		message.setHeader("commitEntry");
-		message.setSequenceNumber(3);
-		server.sendMessage(message);
-		try {
-			Thread.sleep(4000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		assertEquals(4, clients.get(0).getCommittedEntries().size());
 	}
 
 	@Test

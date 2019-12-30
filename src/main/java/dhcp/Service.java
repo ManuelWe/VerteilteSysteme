@@ -12,7 +12,7 @@ import com.sun.jersey.spi.resource.Singleton;
 @Path("dhcp")
 @Singleton
 public class Service {
-	String serverAddress = "0";
+	String serverAddress = "null";
 
 	@GET
 	@Path("server")

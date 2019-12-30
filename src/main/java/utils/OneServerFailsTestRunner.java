@@ -3,13 +3,13 @@ package utils;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
-import test.OneServerFails;
+import test.TestID7_OneServerFails;
 
 public class OneServerFailsTestRunner {
 
 	public static void main(String[] args) {
 		JUnitCore jUnitCore = new JUnitCore();
-		Result result = jUnitCore.run(OneServerFails.class);
+		Result result = jUnitCore.run(TestID7_OneServerFails.class);
 		try {
 			Thread.sleep(30000);
 		} catch (InterruptedException e) {

@@ -2,14 +2,10 @@ specify size of array on initialization?
 handle socket timeouts
 
 
-Checken ob auch text committed wurde bei uncommittedMEssages test
-
 kill during election????
 
 load file??
 
+block input during election
+
 arraylist instead of vector
-
-client controlliert schließen
-
-clients über main starten
