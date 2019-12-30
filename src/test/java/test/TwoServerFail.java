@@ -6,7 +6,6 @@ package test;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,12 +16,8 @@ import org.junit.Test;
 import client.Client;
 import client.Server;
 import client.WebClient;
-import dhcp.DhcpServer;
 
-public class ElectionTests {
-
-	public static final String ip = "localhost";
-	public static final String port = "5000";
+public class TwoServerFail {
 
 	final int amountClients = 100;
 
@@ -30,14 +25,9 @@ public class ElectionTests {
 	List<Client> clients = new ArrayList<Client>();
 	WebClient webClient = null;
 	String serverAddress = null;
-	static Boolean setupDone = false;
 
 	@Before
 	public void setUp() throws Exception {
-		if (!setupDone) {
-			// new Thread(new dhcpThread()).start();
-			setupDone = true;
-		}
 
 		try {
 			for (File file : new File("OutputFiles").listFiles())
@@ -48,19 +38,9 @@ public class ElectionTests {
 		}
 
 		webClient = new WebClient("127.0.0.1");
-		serverAddress = null;
-		while (serverAddress == null) {
-			try {
-				serverAddress = webClient.getServerAddress();
-			} catch (Exception c) {
-				Thread.sleep(100);
-			}
-		}
-
 		server = new Server(webClient);
-		serverAddress = webClient.getServerAddress();
 		for (int i = 0; i < amountClients; i++) {
-			clients.add(new Client(serverAddress, webClient, true));
+			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}
 
 		// TODO remove
@@ -88,31 +68,48 @@ public class ElectionTests {
 		});
 	}
 
-	public class dhcpThread implements Runnable {
-		public void run() {
-			try {
-				String a[] = {};
-				DhcpServer.main(a);
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	@Test
-	public void dhcpWorking() {
-		webClient.setServerAddress("127.0.0.1:23452");
-		assertEquals(webClient.getServerAddress(), "127.0.0.1:23452");
-	}
-
-	@Test
 	public void serverFails() {
 		String newServerAddress = "";
 
 		try {
 			Thread.sleep(5000);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+		server.closeServer();
+
+		try {
+			Thread.sleep(20000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		// remove new server from clients list
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getClientRunning() == false) {
+				newServerAddress = clients.get(i).getServerAddress();
+				server = clients.get(i).getServerInstance();
+				clients.remove(i);
+			}
+		}
+
+		assertEquals(amountClients - 1, clients.size());
+
+		int count = 0;
+		for (int i = 0; i < clients.size(); i++) {
+			if (clients.get(i).getServerAddress().equals(newServerAddress)) {
+				count++;
+			}
+		}
+		assertEquals("Only " + count + " clients connected to same server", amountClients - 1, count);
+	}
+
+	@Test
+	public void twoServerFail() {
+		serverFails();
+		String newServerAddress = "";
+		try {
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -120,7 +117,7 @@ public class ElectionTests {
 		server.closeServer();
 
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(13000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -136,7 +133,7 @@ public class ElectionTests {
 			}
 		}
 
-		assertEquals(amountClients - 1, clients.size());
+		assertEquals(amountClients - 2, clients.size());
 
 		int count = 0;
 		for (int i = 0; i < clients.size(); i++) {
@@ -144,7 +141,7 @@ public class ElectionTests {
 				count++;
 			}
 		}
-		assertEquals("Only " + count + " clients connected to same server", amountClients - 1, count);
+		assertEquals("Only " + count + " clients connected to same server", amountClients - 2, count);
 	}
 
 	@After

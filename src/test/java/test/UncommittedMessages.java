@@ -1,8 +1,8 @@
 package test;
+
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,12 +14,8 @@ import client.Client;
 import client.Message;
 import client.Server;
 import client.WebClient;
-import dhcp.DhcpServer;
 
 public class UncommittedMessages {
-	
-	public static final String ip = "localhost";
-	public static final String port = "5000";
 
 	final int amountClients = 100;
 
@@ -29,10 +25,10 @@ public class UncommittedMessages {
 	String serverAddress = null;
 	static Boolean setupDone = false;
 	Message uncommittedMessage = new Message();
-	
+
 	@Before
 	public void setUp() throws Exception {
-		try { //delete all Output Files
+		try { // delete all Output Files
 			for (File file : new File("OutputFiles").listFiles())
 				if (!file.isDirectory())
 					file.delete();
@@ -46,13 +42,13 @@ public class UncommittedMessages {
 		for (int i = 0; i < amountClients; i++) {
 			clients.add(new Client(serverAddress, webClient, true));
 		}
-		
+
 		uncommittedMessage.setHeader("appendEntry");
-		uncommittedMessage.setText("UncommitedMessage "+" ID:" + "0");
+		uncommittedMessage.setText("UncommitedMessage " + " ID:" + "0");
 		for (int i = 0; i < amountClients; i++) {
-			clients.get(i).setUncommittedMessage(0, uncommittedMessage);
+			clients.get(i).setUncommittedEntries(0, uncommittedMessage);
 		}
-	}	
+	}
 
 	@Test
 	public void serverFails() {
@@ -61,7 +57,7 @@ public class UncommittedMessages {
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
-		
+
 		server.closeServer();
 
 		try {
@@ -79,19 +75,17 @@ public class UncommittedMessages {
 
 		boolean messageCommitted = true;
 		for (int i = 0; i < clients.size(); i++) {
-			
-			if (clients.get(i).getCommittedEntries().get(0).getSequenceNumber()== 0) {
-				System.err.println("Client "+ clients.get(i).getID()+" committed the message");
-			}
-			else {
-				messageCommitted=false;
+
+			if (clients.get(i).getCommittedEntries().get(0).getSequenceNumber() == 0) {
+				System.err.println("Client " + clients.get(i).getID() + " committed the message");
+			} else {
+				messageCommitted = false;
 				break;
-						
+
 			}
 		}
 		assertEquals(true, messageCommitted);
 	}
-	
 
 	@After
 	public void teardown() {
@@ -100,5 +94,5 @@ public class UncommittedMessages {
 			client.stopClient();
 		}
 	}
-	
+
 }
