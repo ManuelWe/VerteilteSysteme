@@ -23,10 +23,7 @@ import client.WebClient;
 
 public class LogReplicationTests {
 
-	public static final String ip = "localhost";
-	public static final String port = "5000";
-
-	final int amountClients = 50;
+	final int amountClients = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -58,12 +55,6 @@ public class LogReplicationTests {
 		for (int i = 0; i < amountClients; i++) {
 			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}
-	}
-
-	@Test
-	public void dhcpWorking() {
-		webClient.setServerAddress("127.0.0.1:23452");
-		assertEquals(webClient.getServerAddress(), "127.0.0.1:23452");
 	}
 
 	@Test

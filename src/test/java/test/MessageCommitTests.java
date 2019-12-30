@@ -20,10 +20,7 @@ import client.WebClient;
 
 public class MessageCommitTests {
 
-	public static final String ip = "localhost";
-	public static final String port = "5000";
-
-	final int amountClients = 1;
+	final int amountClients = 1; // only one needed and tested
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -152,7 +149,7 @@ public class MessageCommitTests {
 		server.sendMessage(message);
 
 		try {
-			Thread.sleep(1000);
+			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -163,10 +160,10 @@ public class MessageCommitTests {
 
 	@After
 	public void teardown() {
-		server.closeServer();
 		for (Client client : clients) {
 			client.stopClient();
 		}
+		server.closeServer();
 	}
 
 }
