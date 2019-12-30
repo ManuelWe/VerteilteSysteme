@@ -1,4 +1,4 @@
-package test;
+package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
@@ -15,10 +15,10 @@ import client.Message;
 import client.Server;
 import client.WebClient;
 
-public class TestID5_XMessagesMissing {
+public class TestID06_UncommittedCommitted {
 
 	final int amountClients = 100;
-	final int missingMessages = 100;
+	final int amountUncommittedMessages = 70;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -42,7 +42,7 @@ public class TestID5_XMessagesMissing {
 	}
 
 	@Test
-	public void missingMessagesGetRequested() {
+	public void uncommittedMessagesGetCommitted() {
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e1) {
@@ -50,25 +50,27 @@ public class TestID5_XMessagesMissing {
 			e1.printStackTrace();
 		}
 
-		for (int i = 0; i < missingMessages; i++) {
+		for (int i = 0; i < amountUncommittedMessages; i++) {
 			Message message = new Message();
 			message.setHeader("appendEntry");
 			message.setText(i + " blabla" + i);
 			message.setSequenceNumber(i);
-			server.setCommittedEntries(i, message);
+			for (int j = 0; j < amountClients; j++) {
+				clients.get(j).setUncommittedEntries(i, message);
+			}
 		}
 
 		Message message = new Message();
 		message.setHeader("commitEntry");
-		message.setSequenceNumber(missingMessages - 1);
+		message.setSequenceNumber(amountUncommittedMessages - 1);
 		server.sendMessage(message);
 		try {
-			Thread.sleep(10000);
+			Thread.sleep(8000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		assertEquals(missingMessages, clients.get(0).getCommittedEntries().size());
+		assertEquals(amountUncommittedMessages, clients.get(0).getCommittedEntries().size());
 	}
 
 	@After

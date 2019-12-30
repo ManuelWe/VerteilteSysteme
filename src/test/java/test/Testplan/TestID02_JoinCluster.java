@@ -1,4 +1,4 @@
-package test;
+package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
@@ -13,9 +13,9 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
-public class TestID2 {
+public class TestID02_JoinCluster {
 
-	final int amountClients = 2;
+	final int amountClients = 500;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();

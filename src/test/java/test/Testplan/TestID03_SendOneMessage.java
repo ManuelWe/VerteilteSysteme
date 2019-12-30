@@ -1,4 +1,4 @@
-package test;
+package test.Testplan;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,9 +14,9 @@ import client.Message;
 import client.Server;
 import client.WebClient;
 
-public class TestID3_SendOneMessage {
+public class TestID03_SendOneMessage {
 
-	final int amountClients = 100;
+	final int amountClients = 2;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -55,7 +55,7 @@ public class TestID3_SendOneMessage {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		while (clients.get(0).getCommittedEntries().size() == 0) {
+		while (clients.get(amountClients - 1).getCommittedEntries().size() == 0) {
 
 		}
 

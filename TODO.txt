@@ -9,3 +9,6 @@ load file??
 block input during election
 
 arraylist instead of vector
+
+
+Werden alle anderen Files die nicht zum recovern genutzt werden gelöscht? --> IDs wieder vergeben

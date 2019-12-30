@@ -1,7 +1,7 @@
 /**
  * 
  */
-package test;
+package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
@@ -17,7 +17,7 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
-public class TestID7_OneServerFails {
+public class TestID07_OneServerFails {
 
 	final int amountClients = 100;
 

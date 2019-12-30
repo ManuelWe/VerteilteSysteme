@@ -18,6 +18,10 @@ import client.Message;
 import client.Server;
 import client.WebClient;
 
+/*
+ * Überprüft ob ein Eintrag überschrieben wird wenn der Server 
+ * eine Nachricht mit der gleichen Sequenznummer schickt
+ * */
 public class MessageCommitTests {
 
 	final int amountClients = 1; // only one needed and tested

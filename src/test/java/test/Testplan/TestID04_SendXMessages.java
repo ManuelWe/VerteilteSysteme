@@ -1,4 +1,4 @@
-package test;
+package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
@@ -17,8 +17,9 @@ import client.Client;
 import client.Message;
 import client.Server;
 import client.WebClient;
+import test.CorrectSequenceNumberOrder;
 
-public class TestID4_SendXMessages {
+public class TestID04_SendXMessages {
 
 	final int amountClients = 100;
 
@@ -64,7 +65,7 @@ public class TestID4_SendXMessages {
 				e.printStackTrace();
 			}
 		}
-		while (clients.get(0).getCommittedEntries().size() < amountClients) {
+		while (clients.get(amountClients - 1).getCommittedEntries().size() < amountClients) {
 
 		}
 		System.err.println(System.currentTimeMillis() - start + "ms duration");

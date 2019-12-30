@@ -14,6 +14,9 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
+/*
+ * Überprüft ob alle Files identisch sind und wie viele Files es gibt
+ * */
 public class FileComparator {
 	List<File> files = new ArrayList<File>();
 

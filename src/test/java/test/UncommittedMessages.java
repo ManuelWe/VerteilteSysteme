@@ -16,6 +16,10 @@ import client.Message;
 import client.Server;
 import client.WebClient;
 
+/*
+ * Überprüft ob Nachrichten erneut versendet werden und richtig festgeschrieben werden
+ * wenn ein Server mit einer uncomitteten Nachricht abstürzt
+ */
 public class UncommittedMessages {
 
 	final int amountClients = 100;

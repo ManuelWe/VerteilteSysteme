@@ -21,6 +21,10 @@ import client.Server;
 import client.VoteRequestHandler;
 import client.WebClient;
 
+/*
+ * Sendet Nachrichten und überprüft ob sie richtig und konsistent in den Files
+ * geschrieben sind
+ * */
 public class LogReplicationTests {
 
 	final int amountClients = 100;

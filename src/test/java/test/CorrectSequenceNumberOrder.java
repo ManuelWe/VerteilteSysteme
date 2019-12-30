@@ -11,6 +11,9 @@ import java.util.Scanner;
 import org.junit.Before;
 import org.junit.Test;
 
+/*
+ * Überprüft ob die Sequenznummern in allen Files fortlaufend sind
+ * */
 public class CorrectSequenceNumberOrder {
 	List<File> files = new ArrayList<File>();
 	Scanner sc = null;
@@ -29,6 +32,7 @@ public class CorrectSequenceNumberOrder {
 	@Test
 	public void rightOrder() {
 		boolean output = true;
+		String file = null;
 		for (int i = 0; i < files.size(); i++) {
 			try {
 				sc = new Scanner(files.get(i));
@@ -43,6 +47,8 @@ public class CorrectSequenceNumberOrder {
 						fileLine++;
 					} else {
 						output = false;
+						file = files.get(i).getName();
+						System.err.println(file + " " + line);
 						break;
 					}
 				}
