@@ -8,6 +8,4 @@ kill during election????
 
 load file??
 
-transmit datalist only when client is new and doesnt supply id
-
 arraylist instead of vector

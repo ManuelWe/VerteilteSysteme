@@ -50,7 +50,7 @@ public class Client {
 	private int clientID = 0;
 	private int nextSequenceNumber = 0;
 	private int highestCommittedSequenceNumber = 0;
-	private File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
+	private File file = null;
 
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
@@ -322,12 +322,12 @@ public class Client {
 						}
 					} else if (message.getHeader().equals("committedEntries")) {
 						committedEntries.addAll(message.getMessageList());
-						if (message.getMessageList().size() > 0) {
-							System.out.println("Added " + message.getMessageList().size() + " messages to log!");
-						}
 						file.delete();
 						for (Message newMessage : message.getMessageList()) {
 							writeToFile(newMessage.getText());
+						}
+						if (message.getMessageList().size() > 0) {
+							System.out.println("Added " + message.getMessageList().size() + " messages to log!");
 						}
 					} else if (message.getHeader().equals("requestedEntry")) {
 						if (committedEntries.size() == message.getSequenceNumber()) {
@@ -351,6 +351,7 @@ public class Client {
 
 					} else if (message.getHeader().equals("clientID")) {
 						clientID = message.getSequenceNumber();
+						file = new File("OutputFiles/OutputFile" + clientID + ".txt");
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						nextClientID = message.getSequenceNumber();
 						if (!message.getText().equals(voteRequestHandlerAddress)) { // don't add own address
@@ -448,11 +449,15 @@ public class Client {
 					}
 				}
 
-				int electionWait = (int) (Math.random() * ((1000 - 0) + 1)) + 0;
+				int electionWait = (int) (Math.random() * (2000 + 1));
 				try {
 					Thread.sleep(electionWait);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+				}
+
+				if (!clientRunning) { // prevent killed client from starting a election
+					break;
 				}
 
 				if (voteRequestHandler.getElectionTerm() <= currentElectionTerm) {

@@ -59,7 +59,6 @@ public class Server {
 
 		new Thread(new messageSenderThread()).start();
 		new Thread(new heartbeatThread(webClient)).start();
-		new Thread(new benchmarkingThread()).start();
 
 		System.out.println("SERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVER");
 		System.out.println("Log files: ");
@@ -170,6 +169,7 @@ public class Server {
 			Message message = null;
 			Message responseMessage = null;
 			int clientID = 0;
+			boolean newClient = true;
 
 			do {
 				try {
@@ -229,8 +229,10 @@ public class Server {
 					} else if (message.getHeader().equals("clientID")) {
 						if (message.getSequenceNumber() == 0) {
 							clientID = nextClientID.getAndIncrement();
+							newClient = true;
 						} else {
 							clientID = message.getSequenceNumber();
+							newClient = false;
 						}
 						System.out.println("Client " + clientID + " is now connected!");
 						message = new Message();
@@ -239,11 +241,13 @@ public class Server {
 						synchronized (outputStreams) {
 							out.writeObject(message);
 						}
-						message = new Message();
-						message.setHeader("committedEntries");
-						message.setMessageList(committedEntries);
-						synchronized (outputStreams) {
-							out.writeObject(message);
+						if (newClient) {
+							message = new Message();
+							message.setHeader("committedEntries");
+							message.setMessageList(committedEntries);
+							synchronized (outputStreams) {
+								out.writeObject(message);
+							}
 						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.add(message.getText());
@@ -358,7 +362,7 @@ public class Server {
 						e.printStackTrace();
 					}
 				}
-				if (counter > 5) {
+				if (counter > 7) {
 					if (dhcpAvailable) {
 						try {
 							addressOnDHCP = webClient.getServerAddress();
@@ -377,6 +381,8 @@ public class Server {
 							}
 							// TODO new Client(addressOnDHCP, webClient, false);
 							closeServer();
+							System.out.println("hi");
+							System.exit(0);
 						}
 					} else {
 						dhcpAvailable = true;
@@ -404,7 +410,7 @@ public class Server {
 		}
 
 		@Override
-		public void run() {
+		public void run() { // TODO test?
 			try {
 				Thread.sleep(1000); // wait until most of clients are connected
 			} catch (InterruptedException e) {
@@ -413,7 +419,7 @@ public class Server {
 			int acknowledgesNeeded = (int) Math.ceil(outputStreams.size() / 2.0);
 			for (Map.Entry<Integer, Message> mapEntry : oldUncommittedEntries.entrySet()) {
 				if (outputStreams.size() == 0) {
-					// TODO commit message
+					committedEntries.add(mapEntry.getKey(), mapEntry.getValue());
 				} else {
 					try {
 						messageList.put(mapEntry.getValue());
@@ -427,33 +433,9 @@ public class Server {
 		}
 	}
 
-	// TODO remove
-	private class benchmarkingThread implements Runnable {
-		@Override
-		public void run() {
-			while (serverRunning) {
-//				try {
-//					Thread.sleep(200);
-//				} catch (InterruptedException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//				System.err.println(messageList.size());
-			}
-		}
-	}
-
 	public String getServerAddress() {
 		return serverAddress;
 	}
-
-//	public void send() {
-//		Message message1 = new Message();
-//		message1.setHeader("heartbeat");
-//		for (int i = 0; i < 50; i++) {
-//			messageList.add(message1);
-//		}
-//	}
 
 	// ############################## Testing Methods #########################
 

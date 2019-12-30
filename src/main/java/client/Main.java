@@ -57,9 +57,9 @@ public class Main {
 				System.exit(0);
 			}
 			if (serverAddress.equals("0")) {
-				System.out.println("DHCP was offline. Waiting, if server registers in the next 6 seconds!");
+				System.out.println("DHCP was offline. Waiting, if server registers in the next 8 seconds!");
 				try {
-					Thread.sleep(6000);
+					Thread.sleep(8000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}

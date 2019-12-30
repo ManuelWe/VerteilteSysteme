@@ -3,17 +3,16 @@ package utils;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
-import test.ElectionTests;
+import test.LogReplicationTests;
 
-public class TestRunner {
+public class LogReplicationTestRunner {
 
 	public static void main(String[] args) {
 		JUnitCore jUnitCore = new JUnitCore();
-		Result result = jUnitCore.run(ElectionTests.class);
+		Result result = jUnitCore.run(LogReplicationTests.class);
 		try {
-			Thread.sleep(20000);
+			Thread.sleep(30000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		System.out.printf("Test ran: %s, Failed: %s%n", result.getRunCount(), result.getFailureCount());
