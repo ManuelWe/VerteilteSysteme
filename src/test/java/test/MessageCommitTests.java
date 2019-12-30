@@ -37,7 +37,7 @@ public class MessageCommitTests {
 		}
 
 		webClient = new WebClient("127.0.0.1");
-		server = new Server(webClient);
+		server = new Server(webClient, 0);
 		for (int i = 0; i < amountClients; i++) {
 			clients.add(new Client(server.getServerAddress(), webClient, true));
 		}
