@@ -43,6 +43,13 @@ public class Server {
 	private AtomicInteger nextSequenceNumber = new AtomicInteger(0);
 	private BlockingQueue<String> messageTextQueue = new LinkedBlockingQueue<String>();
 
+	/*
+	 * Erstelle server socket; sende addresse zum dhcp; wenn server der erste node
+	 * im cluster ist, lese größtes file ein; starte server threads INPUTS:
+	 * webClient instanz; clientID (0, wenn server der erste node im cluster ist)
+	 * OUTPUTS: keine AUTOR: Manuel VERSION: 1.6.3 ERSTELLT: 16.11.19 GEÄNDERT:
+	 * 28.12.19
+	 */
 	public Server(WebClient webClient, int clientID) {
 		try {
 			server = new ServerSocket(0);
@@ -50,6 +57,7 @@ public class Server {
 			i.printStackTrace();
 		}
 
+		// get local ip address
 		String localAddress = null;
 		try (final DatagramSocket socket = new DatagramSocket()) {
 			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
@@ -64,6 +72,7 @@ public class Server {
 
 		webClient.setServerAddress(serverAddress);
 
+		// if server is first node in cluster, read largest file as committed messages
 		if (clientID == 0) {
 			List<File> files = new ArrayList<File>();
 			try {
@@ -107,6 +116,13 @@ public class Server {
 		new Thread(new serverThread()).start();
 	}
 
+	/*
+	 * Lese file des clients ein, der zum server wird, wenn server nicht erster node
+	 * im cluster INPUTS: webClient instanz; clientID (0, wenn server der erste node
+	 * im cluster ist); id des nächsten clients; uncommittete einträge des clients,
+	 * der server startet; nächste sequenznummer OUTPUTS: keine AUTOR: Manuel
+	 * VERSION: 1.6.5 ERSTELLT: 19.11.19 GEÄNDERT: 29.12.19
+	 */
 	public Server(WebClient webClient, int clientID, int nextID, Map<Integer, Message> uncommittedEntries,
 			int nextSequenceNumber) {
 		this(webClient, clientID);
@@ -123,6 +139,11 @@ public class Server {
 		new Thread(new uncommittedMessagesThread(uncommittedEntries)).start();
 	}
 
+	/*
+	 * Ließt zeilen eines files ein, und fügt nachrichten zu committeden entries
+	 * dazu und schreibt sie in das server file INPUTS: file instanz OUTPUTS: keine
+	 * AUTOR: Manuel VERSION: 1.0.0 ERSTELLT: 20.12.19 GEÄNDERT: 30.12.19
+	 */
 	public void readFromFile(File file) {
 		Scanner sc = null;
 		try {
@@ -152,6 +173,11 @@ public class Server {
 		}
 	}
 
+	/*
+	 * Konsumiere nachricht aus messageTextQueue und schreibe diese ins file INPUTS:
+	 * keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.0.2 ERSTELLT: 30.12.19
+	 * GEÄNDERT: 31.12.19
+	 */
 	private class fileWriterThread implements Runnable {
 		File file = new File("OutputFiles/OutputFileSERVER.txt");
 
@@ -191,6 +217,11 @@ public class Server {
 		}
 	}
 
+	/*
+	 * Aktzeptiert einkommende verbindungen und startet clientSocketThread INPUTS:
+	 * keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.0.0 ERSTELLT: 14.11.19
+	 * GEÄNDERT: 18.11.19
+	 */
 	private class serverThread implements Runnable {
 		Socket clientSocket = null;
 
@@ -209,6 +240,12 @@ public class Server {
 		}
 	}
 
+	/*
+	 * open streams and send voteRequestHandlerAddresses to client; füge
+	 * outputstream zur liste der outputstreams hinzu und verarbeite einkommende
+	 * nachrichten INPUTS: clientSocket instanz OUTPUTS: keine AUTOR: Manuel
+	 * VERSION: 1.1.0 ERSTELLT: 18.11.19 GEÄNDERT: 31.12.19
+	 */
 	private class clientSocketThread implements Runnable {
 		Socket clientSocket = null;
 		ObjectInputStream in = null;
@@ -246,6 +283,8 @@ public class Server {
 				try {
 					message = (Message) in.readObject();
 					if (message.getHeader().equals("appendEntry")) {
+						// füge nachricht zur liste der uncommitteten einträge hinzu und berechne
+						// acknoledges needed
 						synchronized (uncommittedEntries) {
 							message.setSequenceNumber(nextSequenceNumber.get());
 							message.setText(nextSequenceNumber.getAndIncrement() + " " + message.getText());
@@ -259,6 +298,8 @@ public class Server {
 									new AbstractMap.SimpleEntry<Message, Integer>(message, acknowledgesNeeded));
 						}
 					} else if (message.getHeader().equals("acknowledgeEntry")) {
+						// zähle acknowledge messages und commite entry sobald genügend acknowledges
+						// gezählt wurden und sende commit message an clients
 						synchronized (uncommittedEntries) {
 							if (uncommittedEntries.containsKey(message.getSequenceNumber())) {
 								uncommittedEntries.compute(message.getSequenceNumber(), (key, val) -> {
@@ -294,6 +335,7 @@ public class Server {
 							}
 						}
 					} else if (message.getHeader().equals("requestEntry")) {
+						// send requested entry back to client
 						responseMessage = new Message();
 						responseMessage.setHeader("requestedEntry");
 						responseMessage.setText(committedEntries.get(message.getSequenceNumber()).getText());
@@ -302,6 +344,7 @@ public class Server {
 							out.writeObject(responseMessage);
 						}
 					} else if (message.getHeader().equals("clientID")) {
+						// new client id if client was not previously connected to cluster
 						if (message.getSequenceNumber() == 0) {
 							clientID = nextClientID.getAndIncrement();
 							newClient = true;
@@ -377,7 +420,10 @@ public class Server {
 		}
 	}
 
-	// sends incoming messages to all clients
+	/*
+	 * send next message in queue to all outputstreams INPUTS:keine OUTPUTS: keine
+	 * AUTOR: Manuel VERSION: 1.9.1 ERSTELLT: 24.11.19 GEÄNDERT: 30.12.19
+	 */
 	public class messageSenderThread implements Runnable {
 
 		@Override
@@ -400,7 +446,6 @@ public class Server {
 							oos = it.next();
 							oos.writeObject(message);
 						} catch (IOException e) {
-							// TODO valid????
 							outputStreams.remove(oos);
 						}
 					}
@@ -409,6 +454,12 @@ public class Server {
 		}
 	}
 
+	/*
+	 * adds heartbeat to message queue every second; every 7 second it is checked,
+	 * if server is still the server refferenced by dhcp, if not he send
+	 * connectToNewServer message to clients INPUTS: webClient instanz OUTPUTS:
+	 * keine AUTOR: Manuel VERSION: 1.2.0 ERSTELLT: 18.11.19 GEÄNDERT: 28.12.19
+	 */
 	private class heartbeatThread implements Runnable {
 		Message message = new Message();
 		WebClient webClient = null;
@@ -428,7 +479,7 @@ public class Server {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-				// only send heartbeat, when no message was sent
+				// only send heartbeat, when no message was sent in the last second
 				if (!messageSent.getAndSet(false)) {
 					try {
 						messageList.put(message);
@@ -467,6 +518,12 @@ public class Server {
 		}
 	}
 
+	/*
+	 * wait shortly, until previously connected clients have connected to new server
+	 * after election and send them uncommitted messages, that the client had, who
+	 * got elected INPUTS: liste der uncommittedEntries OUTPUTS: keine AUTOR: Manuel
+	 * VERSION: 1.3.2 ERSTELLT: 10.12.19 GEÄNDERT: 15.12.19
+	 */
 	private class uncommittedMessagesThread implements Runnable {
 		Map<Integer, Message> oldUncommittedEntries = null;
 
@@ -498,10 +555,6 @@ public class Server {
 		}
 	}
 
-	public String getServerAddress() {
-		return serverAddress;
-	}
-
 	// ############################## Testing Methods #########################
 
 	public void closeServer() {
@@ -528,5 +581,9 @@ public class Server {
 
 	public void sendMessage(Message message) {
 		messageList.add(message);
+	}
+
+	public String getServerAddress() {
+		return serverAddress;
 	}
 }

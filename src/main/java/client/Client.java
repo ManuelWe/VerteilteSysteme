@@ -30,8 +30,16 @@ public class Client {
 	private Scanner scanner;
 	private ObjectInputStream in = null;
 	private ObjectOutputStream out = null;
+
 	private WebClient webClient = null;
+	private Server server = null;
 	private String serverAddress = null;
+	private volatile boolean clientRunning = true;
+	private boolean automatedTest = false;
+	private int nextClientID = 1;
+	private int clientID = 0;
+
+	// election variables
 	private int heartbeatCounter = 4;
 	private int currentElectionTerm = 0;
 	private AtomicBoolean election = new AtomicBoolean(false);
@@ -41,24 +49,35 @@ public class Client {
 	private volatile int votes = 0;
 	private AtomicBoolean startNewServer = new AtomicBoolean(false);
 	private boolean closeConnection = false;
-	private volatile boolean clientRunning = true;
 	private boolean connectToNewServer = false;
 	private String tempServerAddress = "";
-	private Server server = null;
 	private volatile String electedServerAddress = null;
 	private Object electionLock = new Object();
+
+	// log replication variables
 	private Map<Integer, Message> uncommittedEntries = new HashMap<Integer, Message>();
 	private Vector<Message> committedEntries = new Vector<Message>();
-	private int nextClientID = 1;
-	private int clientID = 0;
 	private int nextSequenceNumber = 0;
 	private int highestCommittedSequenceNumber = 0;
 	private File file = null;
 	private BlockingQueue<String> messageTextQueue = new LinkedBlockingQueue<String>();
 
+	/*
+	 * Konstruktor versucht einen clientsocket mit der angegebenen server addresse
+	 * zu verbinden und messageReceiverThread, heartbeatMonitorThread und
+	 * electionHandlerThread werden gestartet. Der client sendet seine ID (0, wenn
+	 * noch keine erhalten) und sendet seine voteRequestHandler addresse. Wenn der
+	 * client nicht im rahmen eines automatisierten tests gestartet wurde, soll dem
+	 * nutzer die möglichkeit zum eingeben von nachrichten gegeben werden. Schlägt
+	 * der verbindungsaufbau zur server addresse fehl, wird der client zum server.
+	 * INPUTS: ip und port des servers; instanz des webClients; true, wenn
+	 * aufgerufen von automatisiertem test OUTPUTS: keine AUTOR: Manuel VERSION:
+	 * 1.0.1 ERSTELLT: 10.11.19 GEÄNDERT: 30.12.19
+	 */
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
 		this.serverAddress = serverAddress;
+		this.automatedTest = automatedTest;
 		voteRequestHandler = new VoteRequestHandler(this);
 		voteRequestHandlerAddress = voteRequestHandler.getAddress();
 
@@ -109,12 +128,21 @@ public class Client {
 		}
 	}
 
+	/*
+	 * Ermöglicht dem Nutzer die eingabe von nachrichten und sendet diese zum
+	 * server; Pausiert während der election; Wenn nutzer over schreibt, oder der
+	 * client nicht mehr läuft, schließe offene verbindungen und terminiere INPUTS:
+	 * keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.0.0 ERSTELLT: 10.11.19
+	 * GEÄNDERT: 30.12.19
+	 */
 	private void clientMain() {
 		Message message = null;
 		String input = "";
 		do {
-			System.out.println("******************************************************");
-			System.out.println("Your input: ");
+			if (!automatedTest) {
+				System.out.println("******************************************************");
+				System.out.println("Your input: ");
+			}
 			input = scanner.nextLine();
 			if (!input.equals("over") && !election.get()) {
 				message = new Message();
@@ -124,9 +152,11 @@ public class Client {
 					synchronized (out) {
 						out.writeObject(message);
 					}
-					System.out.println("******************************************************");
-					System.out.println("Message was send to server ... it might take a while");
-					System.out.println("for processing");
+					if (!automatedTest) {
+						System.out.println("******************************************************");
+						System.out.println("Message was send to server ... it might take a while");
+						System.out.println("for processing");
+					}
 				} catch (IOException c) {
 					c.printStackTrace();
 					election.set(true);
@@ -136,8 +166,10 @@ public class Client {
 				}
 			}
 		} while (clientRunning && !input.equals("over"));
-		System.out.println("******************************************************");
-		System.out.println("Closing connection to server");
+		if (!automatedTest) {
+			System.out.println("******************************************************");
+			System.out.println("Closing connection to server");
+		}
 		scanner.close();
 		clientRunning = false;
 		voteRequestHandler.close();
@@ -145,6 +177,10 @@ public class Client {
 		System.exit(0);
 	}
 
+	/*
+	 * Schließe input-/output stream und socket INPUTS: keine OUTPUTS: keine AUTOR:
+	 * Manuel VERSION: 0.1.1 ERSTELLT: 10.11.19 GEÄNDERT: 11.11.19
+	 */
 	private void closeConnection() {
 		try {
 			in.close();
@@ -163,6 +199,11 @@ public class Client {
 		}
 	}
 
+	/*
+	 * Erstellt server instanz; ließt server addresse, des neu erstellten servers
+	 * aus; beendet client und voteRequestHandler des clients INPUTS: keine OUTPUTS:
+	 * keine AUTOR: Manuel VERSION: 1.0.0 ERSTELLT: 10.11.19 GEÄNDERT: 30.12.19
+	 */
 	private void startNewServer() {
 		server = new Server(webClient, clientID, nextClientID, uncommittedEntries, nextSequenceNumber);
 		serverAddress = server.getServerAddress();
@@ -170,10 +211,18 @@ public class Client {
 		voteRequestHandler.close();
 	}
 
+	/*
+	 * Schließt offene verbindungen; löscht uncommittete nachrichten und baut
+	 * verbindung zu neuem server auf; sendet clientID und
+	 * voteRequestHandlerAddresse INPUTS: keine OUTPUTS: keine AUTOR: Manuel
+	 * VERSION: 1.1.1 ERSTELLT: 16.11.19 GEÄNDERT: 30.12.19
+	 */
 	private void connectToNewServer() {
 		connectToNewServer = true;
-		System.out.println("******************************************************");
-		System.out.println("Connecting to new server " + serverAddress);
+		if (!automatedTest) {
+			System.out.println("******************************************************");
+			System.out.println("Connecting to new server " + serverAddress);
+		}
 		closeConnection();
 		currentElectionTerm = voteRequestHandler.getElectionTerm();
 		uncommittedEntries.clear();
@@ -214,11 +263,19 @@ public class Client {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		System.out.println("******************************************************");
-		System.out.println("Your input: ");
+		if (!automatedTest) {
+			System.out.println("******************************************************");
+			System.out.println("Your input: ");
+		}
 	}
 
-	// receives messages from server
+	/*
+	 * Schließt vom server eingehende nachrichten und verarbeitet diese. Setzt
+	 * heartbeat counter beim empfangen einer nachricht auf 4. Pausiert, während der
+	 * election. Startet election, wenn socket unerwartet vom server geschlossen
+	 * wird. INPUTS: keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.2.2 ERSTELLT:
+	 * 18.11.19 GEÄNDERT: 30.12.19
+	 */
 	private class messageReceiverThread implements Runnable {
 		@Override
 		public void run() {
@@ -239,6 +296,7 @@ public class Client {
 				try {
 					message = (Message) in.readObject();
 				} catch (SocketException s) {
+					// wait until connected to new server
 					if (connectToNewServer) {
 						try {
 							Thread.sleep(500);
@@ -261,12 +319,12 @@ public class Client {
 					}
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
-					System.exit(0);
 				}
 
 				if (clientRunning) {
 					heartbeatCounter = 4;
 					if (message.getHeader().equals("appendEntry")) {
+						// add message to list of uncommitted entries and send acknowledge message
 						if (message.getSequenceNumber() >= nextSequenceNumber) {
 							nextSequenceNumber = message.getSequenceNumber() + 1;
 						}
@@ -282,11 +340,13 @@ public class Client {
 							e.printStackTrace();
 						}
 					} else if (message.getHeader().equals("commitEntry")) {
+						// commit entry if possible; request entries if not in uncommitted entries
 						if (message.getSequenceNumber() > highestCommittedSequenceNumber) {
 							highestCommittedSequenceNumber = message.getSequenceNumber();
 						}
 						if (committedEntries.size() <= message.getSequenceNumber()) {
 							for (int i = committedEntries.size(); i <= message.getSequenceNumber(); i++) {
+								// if entry is available, commit if it has the following sequence number
 								if (uncommittedEntries.containsKey(i)) {
 									if (committedEntries.size() == i) {
 										messageText = uncommittedEntries.get(i).getText();
@@ -295,15 +355,18 @@ public class Client {
 										} catch (InterruptedException e) {
 											e.printStackTrace();
 										}
-										System.out.println("******************************************************");
-										System.out.println("New message committed");
-										System.out.println("******************************************************");
-										System.out.println("Your input: ");
+										if (!automatedTest) {
+											System.out
+													.println("******************************************************");
+											System.out.println("Message \"" + messageText + "\" committed");
+											System.out
+													.println("******************************************************");
+											System.out.println("Your input: ");
+										}
 										committedEntries.add(uncommittedEntries.remove(i));
 									}
 								} else {
-									System.out.println("******************************************************");
-									System.out.println("New message committed");
+									// if entry not available, request
 									responseMessage = new Message();
 									responseMessage.setHeader("requestEntry");
 									responseMessage.setSequenceNumber(i);
@@ -317,7 +380,8 @@ public class Client {
 								}
 							}
 						} else {
-							// substitute existing message with new one
+							// if entry is already committed, substitute existing message with new one
+							// (server hat immer recht)
 							synchronized (file) {
 								List<String> fileContent = null;
 								try {
@@ -344,6 +408,7 @@ public class Client {
 							}
 						}
 					} else if (message.getHeader().equals("committedEntries")) {
+						// add received list to own list, which should be empty
 						committedEntries.addAll(message.getMessageList());
 						file.delete();
 						for (Message newMessage : message.getMessageList()) {
@@ -354,25 +419,39 @@ public class Client {
 							}
 						}
 						if (message.getMessageList().size() > 0) {
-							System.out.println("******************************************************");
-							System.out.println("Added " + message.getMessageList().size() + " messages to file!");
+							if (!automatedTest) {
+								System.out.println("******************************************************");
+								System.out.println("Added " + message.getMessageList().size() + " messages to file!");
+							}
 						}
 					} else if (message.getHeader().equals("requestedEntry")) {
+						// commit entry, if sequence number is following, else add entry to list of
+						// uncommitted; check if following entries can also be committed.
 						if (committedEntries.size() == message.getSequenceNumber()) {
+
 							System.out.println(clientID + ": " + message.getText() + " committed");
+
 							try {
 								messageTextQueue.put(message.getText());
 							} catch (InterruptedException e1) {
 								e1.printStackTrace();
 							}
+							if (!automatedTest) {
+								System.out.println("******************************************************");
+								System.out.println("Message \"" + message.getText() + "\" committed");
+							}
 							committedEntries.add(message);
 							uncommittedEntries.remove(message.getSequenceNumber());
+							// check, if following entries were already committed by server and can be
+							// committed by client
 							for (int i = committedEntries.size(); i <= highestCommittedSequenceNumber
 									&& committedEntries.size() == i; i++) {
 								if (uncommittedEntries.containsKey(i)) {
 									messageText = uncommittedEntries.get(i).getText();
-									System.out.println("******************************************************");
-									System.out.println("New message committed");
+									if (!automatedTest) {
+										System.out.println("******************************************************");
+										System.out.println("Message \"" + messageText + "\" committed");
+									}
 									try {
 										messageTextQueue.put(messageText);
 									} catch (InterruptedException e) {
@@ -385,7 +464,7 @@ public class Client {
 							uncommittedEntries.put(message.getSequenceNumber(), message);
 						}
 					} else if (message.getHeader().equals("heartbeat")) {
-
+						// heartbeatCounter is resetted after every message
 					} else if (message.getHeader().equals("clientID")) {
 						clientID = message.getSequenceNumber();
 						file = new File("OutputFiles/OutputFile" + clientID + ".txt");
@@ -396,12 +475,14 @@ public class Client {
 							voteRequestHandlerAddresses.add(message.getText());
 						}
 					} else if (message.getHeader().equals("voteRequestHandlerAddresses")) {
+						// nextClientID is send together with voteRequestHandlerAddresses
 						nextClientID = message.getSequenceNumber();
 						voteRequestHandlerAddresses = message.getStringList();
 						voteRequestHandlerAddresses.remove(voteRequestHandlerAddress);
 					} else if (message.getHeader().equals("removeVoteRequestHandlerAddress")) {
 						voteRequestHandlerAddresses.remove(message.getText());
 					} else if (message.getHeader().equals("connectToNewServer")) {
+						// if server tells client to connect to new server, do so
 						serverAddress = message.getText();
 						connectToNewServer();
 					} else {
@@ -413,6 +494,11 @@ public class Client {
 		}
 	}
 
+	/*
+	 * Konsumiere nachricht aus messageTextQueue und schreibe diese ins file INPUTS:
+	 * keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.0.2 ERSTELLT: 30.12.19
+	 * GEÄNDERT: 31.12.19
+	 */
 	private class fileWriterThread implements Runnable {
 		public fileWriterThread() {
 			File dir = new File("OutputFiles");
@@ -450,7 +536,11 @@ public class Client {
 		}
 	}
 
-	// monitors heartbeat and starts election
+	/*
+	 * Verringert den HeartbeatCounter jede sekunde um 1; pausiert während der
+	 * election INPUTS: keine OUTPUTS: keine AUTOR: Manuel VERSION: 0.9.2 ERSTELLT:
+	 * 10.11.19 GEÄNDERT: 11.11.19
+	 */
 	private class heartbeatMonitorThread implements Runnable {
 
 		@Override
@@ -483,7 +573,15 @@ public class Client {
 		}
 	}
 
-	// handles election
+	/*
+	 * Wartet bis eine election gestartet wird und schläft für eine zufällige zeit;
+	 * startet election, wenn der voteRequestHandler noch nicht gevoted hat. Für die
+	 * elektion wird pro bekanntem vote equest handler ein thread gestartet. Warte,
+	 * bis eine server addresse empfangen wurde, oder ein timeout passiert. Verbinde
+	 * zu neuem server, wenn dieser gewählt oder starte elektion für nächsten term.
+	 * INPUTS: keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.4.8 ERSTELLT: 24.11.19
+	 * GEÄNDERT: 29.12.19
+	 */
 	private class electionHandlerThread implements Runnable {
 
 		@Override
@@ -510,11 +608,14 @@ public class Client {
 					break;
 				}
 
+				// only start election, if voteRequestHandler hasn't voted already in this term
 				if (voteRequestHandler.getElectionTerm() <= currentElectionTerm) {
 					currentElectionTerm++;
 					Timestamp ts = new Timestamp(new Date().getTime());
-					System.out.println("******************************************************");
-					System.out.println("Election started");
+					if (!automatedTest) {
+						System.out.println("******************************************************");
+						System.out.println("Election started");
+					}
 					voteRequestHandler.setElectionTerm(currentElectionTerm);
 					if (voteRequestHandlerAddresses.size() == 0) {
 						startNewServer();
@@ -566,6 +667,14 @@ public class Client {
 		}
 	}
 
+	/*
+	 * Baut verbindung zu einem voteRequesthandler eines bekannten clients auf und
+	 * fordert einen vote. Sind genügend stimmen gesammelt, werde zum server und
+	 * sende neue server addresse an voteRequestHandler. Wenn nicht genügend votes
+	 * gesammelt werden konnten, benachrichtige voteRequestHandler und schließe
+	 * verbindung. INPUTS: keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.1.8
+	 * ERSTELLT: 30.11.19 GEÄNDERT: 31.12.19
+	 */
 	private class voteRequestHandlerThread implements Runnable {
 		String voteRequestHandlerAddress;
 
@@ -693,31 +802,6 @@ public class Client {
 		this.electedServerAddress = electedServer;
 	}
 
-	public void sendMessage(String text) {
-		if (election.get()) {
-			synchronized (election) {
-				try {
-					election.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		Message message = new Message();
-		try {
-			message.setText(text + " " + ZonedDateTime.now() + " ID:" + clientID);
-			message.setHeader("appendEntry");
-			synchronized (out) {
-				out.writeObject(message);
-			}
-		} catch (IOException c) {
-			election.set(true);
-			synchronized (electionLock) {
-				electionLock.notify();
-			}
-		}
-	}
-
 	// ############################## Testing Methods #########################
 
 	public ObjectOutputStream getOutputStream() {
@@ -758,6 +842,31 @@ public class Client {
 		election.set(true);
 		synchronized (electionLock) {
 			electionLock.notify();
+		}
+	}
+
+	public void sendMessage(String text) {
+		if (election.get()) {
+			synchronized (election) {
+				try {
+					election.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		Message message = new Message();
+		try {
+			message.setText(text + " " + ZonedDateTime.now() + " ID:" + clientID);
+			message.setHeader("appendEntry");
+			synchronized (out) {
+				out.writeObject(message);
+			}
+		} catch (IOException c) {
+			election.set(true);
+			synchronized (electionLock) {
+				electionLock.notify();
+			}
 		}
 	}
 }

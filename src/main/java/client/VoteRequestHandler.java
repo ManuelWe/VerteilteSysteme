@@ -19,6 +19,11 @@ public class VoteRequestHandler {
 	private AtomicBoolean voted = new AtomicBoolean(false);
 	private Client client = null;
 
+	/*
+	 * Startet server socket; ließt locale ip aus und startet den thread, der
+	 * eingehende verbindungen managed INPUTS: client instanz OUTPUTS: keine AUTOR:
+	 * Manuel VERSION: 0.9.7 ERSTELLT: 2.12.19 GEÄNDERT: 30.12.19
+	 */
 	public VoteRequestHandler(Client client) {
 		this.client = client;
 		try {
@@ -27,6 +32,7 @@ public class VoteRequestHandler {
 			e.printStackTrace();
 		}
 
+		// trick to get local ip
 		String localAddress = null;
 		try (final DatagramSocket socket = new DatagramSocket()) {
 			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
@@ -42,6 +48,11 @@ public class VoteRequestHandler {
 		new Thread(new voteRequestHandlerThread()).start();
 	}
 
+	/*
+	 * Aktzeptiert einkommende verbindungen und startet für jede einen
+	 * clientSocketThread INPUTS: keine OUTPUTS: keine AUTOR: Manuel VERSION: 1.0.0
+	 * ERSTELLT: 02.12.19 GEÄNDERT: 18.12.19
+	 */
 	private class voteRequestHandlerThread implements Runnable {
 		@Override
 		public void run() {
@@ -69,6 +80,11 @@ public class VoteRequestHandler {
 		}
 	}
 
+	/*
+	 * Sendet voteResponse zurück und setzt neue server addresse, sobald ein anderer
+	 * client die wahl gewonnen hat INPUTS: client socket OUTPUTS: keine AUTOR:
+	 * Manuel VERSION: 1.1.3 ERSTELLT: 02.12.19 GEÄNDERT: 20.12.19
+	 */
 	private class clientSocketThread implements Runnable {
 		private Socket clientSocket = null;
 		private ObjectInputStream in = null;

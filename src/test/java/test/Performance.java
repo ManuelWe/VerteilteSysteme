@@ -18,10 +18,15 @@ import client.Message;
 import client.Server;
 import client.WebClient;
 
+/*
+ * Testet wie lange das System braucht bis eine Anzahl an Messages bei einer Anzahl an Clients alle 
+ * Nachrichten beim letzten Follower committed sind
+ * */
+
 public class Performance {
 
 	final int amountClients = 100;
-	final int amountMessages = 100;
+	final int amountMessages = 1000;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -71,11 +76,16 @@ public class Performance {
 
 		System.err.println(System.currentTimeMillis() - startTime + "ms duration");
 
+		try {
+			Thread.sleep(7000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		assertEquals(amountMessages, server.getCommittedEntries().size());
 
 		for (int i = 0; i < clients.size(); i++) {
 			assertEquals("" + i, amountMessages, clients.get(i).getCommittedEntries().size());
-			System.err.println(clients.get(i).getCommittedEntries().size());
 		}
 
 		JUnitCore jUnitCore = new JUnitCore();
@@ -87,7 +97,6 @@ public class Performance {
 		}
 		System.err.printf("Test ran: %s, Failed: %s%n", result.getRunCount(), result.getFailureCount());
 		assertEquals("Sequence numbers are not correct!", 0, result.getFailureCount());
-
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {

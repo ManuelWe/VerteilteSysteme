@@ -21,7 +21,7 @@ import test.CorrectSequenceNumberOrder;
 
 public class TestID04_SendXMessages {
 
-	final int amountClients = 100;
+	final int amountClients = 200;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();

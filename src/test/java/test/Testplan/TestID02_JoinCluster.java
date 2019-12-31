@@ -2,6 +2,7 @@ package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,9 +14,8 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
-
 public class TestID02_JoinCluster {
-	final int amountClients = 500;
+	final int amountClients = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
@@ -25,6 +25,13 @@ public class TestID02_JoinCluster {
 
 	@Before
 	public void setUp() throws Exception {
+		try {
+			for (File file : new File("OutputFiles").listFiles())
+				if (!file.isDirectory())
+					file.delete();
+		} catch (NullPointerException e) {
+
+		}
 		webClient = new WebClient("127.0.0.1");
 		serverAddress = null;
 		server = new Server(webClient, 0);
@@ -54,7 +61,7 @@ public class TestID02_JoinCluster {
 			}
 		}
 		assertEquals("Only " + count + " clients are connected to the server", amountClients, count);
-		System.err.println(endTime - startTime);
+		System.err.println(endTime - startTime + " ms duration");
 
 	}
 
