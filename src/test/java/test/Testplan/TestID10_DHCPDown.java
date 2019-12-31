@@ -2,8 +2,6 @@ package test.Testplan;
 
 import static org.junit.Assert.assertEquals;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,17 +77,8 @@ public class TestID10_DHCPDown {
 
 		dhcpServerThread = new Thread(new dhcpThread());
 		dhcpServerThread.start();
-<<<<<<< HEAD:src/test/java/test/Testplan/TestID10_DHCPDown.java
-
 		// DHCP-Server starts, but has not the ServerAddress
-		assertEquals("0", webClient.getServerAddress());
-
-=======
-		
-		//DHCP-Server starts, but has not the ServerAddress
-		assertEquals("null", webClient.getServerAddress()); 
-		
->>>>>>> 71778b4c02d47884ba942d53fe206c19f87cd9fc:src/test/java/test/TestID10.java
+		assertEquals("null", webClient.getServerAddress());
 		try {
 			Thread.sleep(10000L);
 		} catch (InterruptedException e) {
