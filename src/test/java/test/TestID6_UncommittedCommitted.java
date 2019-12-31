@@ -18,7 +18,7 @@ import client.WebClient;
 public class TestID6_UncommittedCommitted {
 
 	final int amountClients = 100;
-	final int amountUncommittedMessages = 10;
+	final int amountUncommittedMessages = 100;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();

@@ -4,8 +4,5 @@ handle socket timeouts
 
 kill during election????
 
-load file??
-
-block input during election
 
 arraylist instead of vector

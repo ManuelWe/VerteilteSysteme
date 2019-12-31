@@ -15,7 +15,7 @@ import client.WebClient;
 
 public class TestID2 {
 
-	final int amountClients = 1000;
+	final int amountClients = 10000;
 
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();

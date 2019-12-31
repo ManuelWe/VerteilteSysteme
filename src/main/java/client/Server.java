@@ -41,6 +41,7 @@ public class Server {
 	private Map<Integer, Entry<Message, Integer>> uncommittedEntries = new ConcurrentHashMap<Integer, Entry<Message, Integer>>();
 	private Vector<Message> committedEntries = new Vector<Message>();
 	private AtomicInteger nextSequenceNumber = new AtomicInteger(0);
+	private BlockingQueue<String> messageTextQueue = new LinkedBlockingQueue<String>();
 
 	public Server(WebClient webClient, int clientID) {
 		try {
@@ -79,13 +80,24 @@ public class Server {
 						biggestFile = files.get(i);
 					}
 				}
+
+				if (!biggestFile.getName().equals("OutputFileSERVER.txt")) {
+					new File("OutputFiles/OutputFileSERVER.txt").delete();
+				}
+
 				readFromFile(biggestFile);
+
 				System.out.println("Messages read from " + biggestFile.getName());
+
+				for (File file : new File("OutputFiles").listFiles())
+					if (!file.isDirectory() && !file.getName().equals("OutputFileSERVER.txt"))
+						file.delete();
 			}
 		}
 
 		new Thread(new messageSenderThread()).start();
 		new Thread(new heartbeatThread(webClient)).start();
+		new Thread(new fileWriterThread()).start();
 
 		System.out.println("SERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVER");
 		System.out.println("Log files: ");
@@ -97,9 +109,12 @@ public class Server {
 			int nextSequenceNumber) {
 		this(webClient, clientID);
 		this.nextClientID.set(nextID);
-		this.nextSequenceNumber.set(nextSequenceNumber);
+		if (this.nextSequenceNumber.get() < nextSequenceNumber) {
+			this.nextSequenceNumber.set(nextSequenceNumber);
+		}
 
 		if (clientID > 0) {
+			new File("OutputFiles/OutputFileSERVER.txt").delete();
 			File file = new File("OutputFiles/OutputFile" + clientID + ".txt");
 			readFromFile(file);
 		}
@@ -111,13 +126,22 @@ public class Server {
 		try {
 			sc = new Scanner(file);
 			Message message = null;
+			String text = "";
 			while (sc.hasNextLine()) {
 				message = new Message();
-				message.setText(sc.nextLine());
+				text = sc.nextLine();
+				message.setText(text);
+				if (!file.getName().equals("OutputFileSERVER.txt")) {
+					try {
+						messageTextQueue.put(text);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
 				committedEntries.add(message);
 			}
-			if (message.getText() != null) {
-				this.nextSequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
+			if (message != null && message.getText() != null) {
+				nextSequenceNumber.set(Integer.parseInt(message.getText().split(" ")[0]) + 1);
 			}
 			file.delete();
 			sc.close();
@@ -126,25 +150,41 @@ public class Server {
 		}
 	}
 
-	private void writeToFile(String messageText) {
-		File dir = new File("OutputFiles");
+	private class fileWriterThread implements Runnable {
 		File file = new File("OutputFiles/OutputFileSERVER.txt");
-		try {
-			dir.mkdir();
-			file.createNewFile();
-		} catch (IOException e) {
-			e.printStackTrace();
+
+		public fileWriterThread() {
+			File dir = new File("OutputFiles");
+			try {
+				dir.mkdir();
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 
-		List<String> lines = Arrays.asList(messageText);
+		@Override
+		public void run() {
+			String messageText = "";
+			while (serverRunning) {
+				try {
+					messageText = messageTextQueue.take();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+				synchronized (file) {
+					List<String> lines = Arrays.asList(messageText);
 
-		try {
-			Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-		} catch (IOException e) {
-			try {
-				Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
-			} catch (IOException e1) {
-				e1.printStackTrace();
+					try {
+						Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+					} catch (IOException e) {
+						try {
+							Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					}
+				}
 			}
 		}
 	}
@@ -239,7 +279,11 @@ public class Server {
 
 									for (int i = committedEntries.size(); i <= message.getSequenceNumber(); i++) {
 										if (uncommittedEntries.containsKey(i)) {
-											writeToFile(uncommittedEntries.get(i).getKey().getText());
+											try {
+												messageTextQueue.put(uncommittedEntries.get(i).getKey().getText());
+											} catch (InterruptedException e) {
+												e.printStackTrace();
+											}
 											committedEntries.add(uncommittedEntries.get(i).getKey());
 											uncommittedEntries.remove(i);
 										}
@@ -431,7 +475,7 @@ public class Server {
 		}
 
 		@Override
-		public void run() { // TODO test?
+		public void run() {
 			try {
 				Thread.sleep(1000); // wait until most of clients are connected
 			} catch (InterruptedException e) {
