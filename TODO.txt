@@ -5,4 +5,5 @@ handle socket timeouts
 kill during election????
 
 
-arraylist instead of vector
+output formatting
+

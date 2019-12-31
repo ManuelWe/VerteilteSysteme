@@ -63,7 +63,7 @@ public class Client {
 		voteRequestHandlerAddress = voteRequestHandler.getAddress();
 
 		if (!automatedTest) {
-			System.out.println("CLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENTCLIENT");
+			System.out.println("A client was started");
 		}
 
 		String address = serverAddress.split(":")[0];
@@ -106,7 +106,6 @@ public class Client {
 
 		} catch (IOException u) {
 			startNewServer();
-			System.out.println("Started server from 85");
 		}
 	}
 
@@ -114,7 +113,8 @@ public class Client {
 		Message message = null;
 		String input = "";
 		do {
-			System.out.printf("Your input: ");
+			System.out.println("******************************************************");
+			System.out.println("Your input: ");
 			input = scanner.nextLine();
 			if (!input.equals("over") && !election.get()) {
 				message = new Message();
@@ -124,6 +124,9 @@ public class Client {
 					synchronized (out) {
 						out.writeObject(message);
 					}
+					System.out.println("******************************************************");
+					System.out.println("Message was send to server ... it might take a while");
+					System.out.println("for processing");
 				} catch (IOException c) {
 					c.printStackTrace();
 					election.set(true);
@@ -133,6 +136,7 @@ public class Client {
 				}
 			}
 		} while (clientRunning && !input.equals("over"));
+		System.out.println("******************************************************");
 		System.out.println("Closing connection to server");
 		scanner.close();
 		clientRunning = false;
@@ -168,10 +172,10 @@ public class Client {
 
 	private void connectToNewServer() {
 		connectToNewServer = true;
+		System.out.println("******************************************************");
 		System.out.println("Connecting to new server " + serverAddress);
 		closeConnection();
 		currentElectionTerm = voteRequestHandler.getElectionTerm();
-		System.out.println("New election term:" + currentElectionTerm);
 		uncommittedEntries.clear();
 
 		try {
@@ -210,7 +214,8 @@ public class Client {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		System.out.printf("Your input: ");
+		System.out.println("******************************************************");
+		System.out.println("Your input: ");
 	}
 
 	// receives messages from server
@@ -285,16 +290,20 @@ public class Client {
 								if (uncommittedEntries.containsKey(i)) {
 									if (committedEntries.size() == i) {
 										messageText = uncommittedEntries.get(i).getText();
-										System.out.println(clientID + ": " + messageText + " committed");
 										try {
 											messageTextQueue.put(messageText);
 										} catch (InterruptedException e) {
 											e.printStackTrace();
 										}
+										System.out.println("******************************************************");
+										System.out.println("New message committed");
+										System.out.println("******************************************************");
+										System.out.println("Your input: ");
 										committedEntries.add(uncommittedEntries.remove(i));
 									}
 								} else {
-									System.out.println("Message " + i + " requested");
+									System.out.println("******************************************************");
+									System.out.println("New message committed");
 									responseMessage = new Message();
 									responseMessage.setHeader("requestEntry");
 									responseMessage.setSequenceNumber(i);
@@ -345,7 +354,8 @@ public class Client {
 							}
 						}
 						if (message.getMessageList().size() > 0) {
-							System.out.println("Added " + message.getMessageList().size() + " messages to log!");
+							System.out.println("******************************************************");
+							System.out.println("Added " + message.getMessageList().size() + " messages to file!");
 						}
 					} else if (message.getHeader().equals("requestedEntry")) {
 						if (committedEntries.size() == message.getSequenceNumber()) {
@@ -361,7 +371,8 @@ public class Client {
 									&& committedEntries.size() == i; i++) {
 								if (uncommittedEntries.containsKey(i)) {
 									messageText = uncommittedEntries.get(i).getText();
-									System.out.println(clientID + ": " + messageText + " committed");
+									System.out.println("******************************************************");
+									System.out.println("New message committed");
 									try {
 										messageTextQueue.put(messageText);
 									} catch (InterruptedException e) {
@@ -458,7 +469,6 @@ public class Client {
 				if (heartbeatCounter > 0) {
 					heartbeatCounter--;
 				} else {
-					System.out.println(clientID + ": heartbeat stopped");
 					election.set(true);
 					synchronized (electionLock) {
 						electionLock.notify();
@@ -503,17 +513,16 @@ public class Client {
 				if (voteRequestHandler.getElectionTerm() <= currentElectionTerm) {
 					currentElectionTerm++;
 					Timestamp ts = new Timestamp(new Date().getTime());
-					System.out.println(clientID + ": Election for term: " + currentElectionTerm + " " + ts);
+					System.out.println("******************************************************");
+					System.out.println("Election started");
 					voteRequestHandler.setElectionTerm(currentElectionTerm);
 					if (voteRequestHandlerAddresses.size() == 0) {
-						System.out.println(clientID + ": Start server from 322");
 						startNewServer();
 						scanner.close();
 						closeConnection();
 					} else {
 						votes = 0;
 						tempServerAddress = "";
-						System.out.println(voteRequestHandlerAddresses);
 						for (String voteRequestHandlerAddress : voteRequestHandlerAddresses) {
 							new Thread(new voteRequestHandlerThread(voteRequestHandlerAddress)).start();
 						}
@@ -525,7 +534,6 @@ public class Client {
 				int electionTimeout = 20;
 				while (electedServerAddress == null && electionTimeout > 0) {
 					if (startNewServer.get() && !serverStarted) {
-						System.out.println("Start new server 336");
 						startNewServer();
 						serverStarted = true;
 					}
@@ -600,7 +608,7 @@ public class Client {
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
 			} catch (SocketTimeoutException e) {
-				System.err.println("TIMEOUT ON CLIENT LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
+				System.err.println("TIMEOUT ON CLIENT");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -655,7 +663,6 @@ public class Client {
 					closeConnection = true;
 				;
 			} else {
-				System.out.println(clientID + " " + votes + " VOTESVOTESVOTESVOTES");
 				message = new Message();
 				message.setHeader("electionCanceled");
 				try {

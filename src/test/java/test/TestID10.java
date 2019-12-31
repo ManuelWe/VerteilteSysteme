@@ -77,10 +77,10 @@ public class TestID10 {
 
 		dhcpServerThread = new Thread(new dhcpThread());
 		dhcpServerThread.start();
-
-		// DHCP-Server starts, but has not the ServerAddress
-		assertEquals("0", webClient.getServerAddress());
-
+		
+		//DHCP-Server starts, but has not the ServerAddress
+		assertEquals("null", webClient.getServerAddress()); 
+		
 		try {
 			Thread.sleep(10000L);
 		} catch (InterruptedException e) {

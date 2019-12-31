@@ -99,8 +99,10 @@ public class Server {
 		new Thread(new heartbeatThread(webClient)).start();
 		new Thread(new fileWriterThread()).start();
 
-		System.out.println("SERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVERSERVER");
-		System.out.println("Log files: ");
+		System.out.println("******************************************************");
+		System.out.println("You are now the server");
+		System.out.println("******************************************************");
+		System.out.println("Server log: ");
 
 		new Thread(new serverThread()).start();
 	}
@@ -455,8 +457,6 @@ public class Server {
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
-
-							System.out.println("Server not leader anymore!");
 							closeServer();
 						}
 					}
