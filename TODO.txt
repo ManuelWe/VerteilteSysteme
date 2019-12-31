@@ -4,11 +4,12 @@ handle socket timeouts
 
 kill during election????
 
-load file??
 
-block input during election
+output formatting
+
 
 arraylist instead of vector
 
 
 Werden alle anderen Files die nicht zum recovern genutzt werden gelöscht? --> IDs wieder vergeben
+

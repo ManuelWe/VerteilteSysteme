@@ -20,6 +20,7 @@ public class TestID06_UncommittedCommitted {
 	final int amountClients = 100;
 	final int amountUncommittedMessages = 70;
 
+
 	Server server = null;
 	List<Client> clients = new ArrayList<Client>();
 	WebClient webClient = null;
