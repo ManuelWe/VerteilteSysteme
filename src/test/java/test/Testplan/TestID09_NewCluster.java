@@ -96,7 +96,8 @@ public class TestID09_NewCluster {
 				biggestFile = files.get(i);
 			}
 		}
-		clientWithBiggestFile = Integer.parseInt(biggestFile.getName().split("Files")[1].split(".")[0]);
+
+		clientWithBiggestFile = Integer.parseInt(biggestFile.getName().split("File")[1].split(".txt")[0]);
 
 		writtenMessages = clients.get(clientWithBiggestFile).getCommittedEntries();
 
