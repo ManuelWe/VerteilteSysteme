@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Vector;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Client {
@@ -52,6 +54,7 @@ public class Client {
 	private int nextSequenceNumber = 0;
 	private int highestCommittedSequenceNumber = 0;
 	private File file = null;
+	private BlockingQueue<String> messageTextQueue = new LinkedBlockingQueue<String>();
 
 	public Client(String serverAddress, WebClient webClient, boolean automatedTest) {
 		this.webClient = webClient;
@@ -287,11 +290,15 @@ public class Client {
 								if (uncommittedEntries.containsKey(i)) {
 									if (committedEntries.size() == i) {
 										messageText = uncommittedEntries.get(i).getText();
+										try {
+											messageTextQueue.put(messageText);
+										} catch (InterruptedException e) {
+											e.printStackTrace();
+										}
 										System.out.println("******************************************************");
 										System.out.println("New message committed");
 										System.out.println("******************************************************");
 										System.out.println("Your input: ");
-										writeToFile(messageText);
 										committedEntries.add(uncommittedEntries.remove(i));
 									}
 								} else {
@@ -340,7 +347,11 @@ public class Client {
 						committedEntries.addAll(message.getMessageList());
 						file.delete();
 						for (Message newMessage : message.getMessageList()) {
-							writeToFile(newMessage.getText());
+							try {
+								messageTextQueue.put(newMessage.getText());
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						}
 						if (message.getMessageList().size() > 0) {
 							System.out.println("******************************************************");
@@ -349,14 +360,24 @@ public class Client {
 					} else if (message.getHeader().equals("requestedEntry")) {
 						if (committedEntries.size() == message.getSequenceNumber()) {
 							System.out.println(clientID + ": " + message.getText() + " committed");
-							writeToFile(message.getText());
+							try {
+								messageTextQueue.put(message.getText());
+							} catch (InterruptedException e1) {
+								e1.printStackTrace();
+							}
 							committedEntries.add(message);
 							uncommittedEntries.remove(message.getSequenceNumber());
 							for (int i = committedEntries.size(); i <= highestCommittedSequenceNumber
 									&& committedEntries.size() == i; i++) {
 								if (uncommittedEntries.containsKey(i)) {
 									messageText = uncommittedEntries.get(i).getText();
-									writeToFile(messageText);
+									System.out.println("******************************************************");
+									System.out.println("New message committed");
+									try {
+										messageTextQueue.put(messageText);
+									} catch (InterruptedException e) {
+										e.printStackTrace();
+									}
 									committedEntries.add(uncommittedEntries.remove(i));
 								}
 							}
@@ -368,6 +389,7 @@ public class Client {
 					} else if (message.getHeader().equals("clientID")) {
 						clientID = message.getSequenceNumber();
 						file = new File("OutputFiles/OutputFile" + clientID + ".txt");
+						new Thread(new fileWriterThread()).start();
 					} else if (message.getHeader().equals("voteRequestHandlerAddress")) {
 						nextClientID = message.getSequenceNumber();
 						if (!message.getText().equals(voteRequestHandlerAddress)) { // don't add own address
@@ -391,8 +413,8 @@ public class Client {
 		}
 	}
 
-	private void writeToFile(String messageText) {
-		synchronized (file) {
+	private class fileWriterThread implements Runnable {
+		public fileWriterThread() {
 			File dir = new File("OutputFiles");
 			try {
 				dir.mkdir();
@@ -400,16 +422,29 @@ public class Client {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		}
 
-			List<String> lines = Arrays.asList(messageText);
-
-			try {
-				Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-			} catch (IOException e) {
+		@Override
+		public void run() {
+			String messageText = "";
+			while (clientRunning) {
 				try {
-					Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
-				} catch (IOException e1) {
+					messageText = messageTextQueue.take();
+				} catch (InterruptedException e1) {
 					e1.printStackTrace();
+				}
+				synchronized (file) {
+					List<String> lines = Arrays.asList(messageText);
+
+					try {
+						Files.write(file.toPath(), lines, StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+					} catch (IOException e) {
+						try {
+							Files.write(file.toPath(), lines, StandardCharsets.UTF_8);
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					}
 				}
 			}
 		}

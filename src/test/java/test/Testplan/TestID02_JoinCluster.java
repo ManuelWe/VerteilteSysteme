@@ -13,6 +13,7 @@ import client.Client;
 import client.Server;
 import client.WebClient;
 
+
 public class TestID02_JoinCluster {
 	final int amountClients = 500;
 
